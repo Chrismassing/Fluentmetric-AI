@@ -1,0 +1,17 @@
+# Design docs and repo housekeeping — never deploy
+Documents/
+.cursor/
+Salesforce.gitignore
+.DS_Store
+**/.DS_Store
+
+# Claude / local tooling
+.claude/
+CLAUDE.md
+
+# Standard SFDX
+**/jsconfig.json
+**/.eslintrc.json
+**/package.json
+**/package-lock.json
+node_modules/

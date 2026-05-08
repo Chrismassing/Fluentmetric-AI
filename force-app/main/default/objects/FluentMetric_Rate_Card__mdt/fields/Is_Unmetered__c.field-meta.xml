@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Unmetered__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When true, CostCalculatorService returns zero USD and zero Flex Credits for this model rather than billing per call. Use for Salesforce-internal classifiers (e.g. EinsteinHyperClassifier, EinsteinTextEval) that do not consume customer Flex Credits per the public rate card. Unmetered rows are also ineligible for use as the default fallback.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Tick for models that do not consume Flex Credits (internal Salesforce classifiers, etc.). Cost calculations skip these rows entirely.</inlineHelpText>
+    <label>Is Unmetered</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

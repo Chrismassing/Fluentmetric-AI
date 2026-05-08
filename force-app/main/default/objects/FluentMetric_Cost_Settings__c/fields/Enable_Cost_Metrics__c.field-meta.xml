@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Enable_Cost_Metrics__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Opt-in for cost analytics. When false (default), all cost fields on DTOs return zero and the UI hides cost cards, columns, and the Cost tab. Admins enable this only after reviewing the Flex Credits Rate Card disclaimer; the dashboard estimates LLM prompt + action charges only and does not reflect Data Cloud retrieval, unmetered models, or fine-tuning costs.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>When off, cost analytics are hidden across the app. When on, the Cost tab and cost columns appear using FluentMetric_Rate_Card__mdt values. See the Cost Settings panel for the full disclaimer.</inlineHelpText>
+    <label>Enable Cost Metrics</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

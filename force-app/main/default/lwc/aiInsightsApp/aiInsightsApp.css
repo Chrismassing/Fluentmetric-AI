@@ -1,0 +1,29 @@
+/*
+ * Container uses SLDS spacing utilities only — no custom positioning needed.
+ * Kept as a lightweight stylesheet for future dashboard-level tweaks.
+ */
+
+:host {
+    display: block;
+    background-color: var(--slds-g-color-surface-container-2, #f3f3f3);
+    min-height: 100%;
+}
+
+/* The tabset sits inside an slds-card wrapper so it feels contained. Drop the
+   card's internal padding because each tab's content already has
+   slds-p-around_medium, and let the tab headers reach the card edges. */
+.fm-app-tabs {
+    padding: 0;
+    overflow: hidden;
+}
+
+.fm-app-tabs .fm-tabset {
+    display: block;
+}
+
+/* Date filter docked into the right side of the app header. Shrinks gracefully
+   onto its own line below the title on narrow viewports. */
+.fm-app-date-filter {
+    flex: 0 0 auto;
+    min-width: 12rem;
+}

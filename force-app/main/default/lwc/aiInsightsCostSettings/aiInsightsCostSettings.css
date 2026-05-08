@@ -1,0 +1,23 @@
+.fm-setting-tile {
+    padding: 0.75rem 1rem;
+    background: var(--slds-g-color-surface-container-1, #fff);
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    height: 100%;
+}
+.fm-setting-tile__label {
+    font-size: var(--slds-g-font-size-1, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.0625rem;
+    color: var(--slds-g-color-neutral-base-30, #444);
+    margin: 0 0 0.25rem 0;
+}
+.fm-setting-tile__value {
+    font-size: var(--slds-g-font-size-4, 1.125rem);
+    font-weight: 600;
+    margin: 0;
+    color: var(--slds-g-color-neutral-base-10, #181818);
+}
+.fm-preview-cost {
+    color: var(--slds-g-color-brand-base-40, #014486);
+}

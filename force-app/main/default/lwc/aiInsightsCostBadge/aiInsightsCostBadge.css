@@ -1,0 +1,12 @@
+:host {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.fm-cost-badge_compact {
+    font-size: 0.625rem;
+    line-height: 1;
+    padding: 0.125rem 0.375rem;
+    margin-left: 0.25rem;
+}

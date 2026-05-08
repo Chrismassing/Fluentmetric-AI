@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>FluentMetric AI Dashboard</masterLabel>
+    <description>Main container for the FluentMetric AI dashboard. Holds the date filter, overview, and user adoption components.</description>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__HomePage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__AppPage,lightning__HomePage">
+            <property name="defaultPresetDays"
+                      label="Default date range (days)"
+                      type="Integer"
+                      default="30"
+                      description="Number of days for the initial date range (7, 30, or 90 recommended)."/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

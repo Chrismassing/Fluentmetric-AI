@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningMessageChannel xmlns="http://soap.sforce.com/2006/04/metadata">
+    <masterLabel>AI Insights Date Range</masterLabel>
+    <isExposed>true</isExposed>
+    <description>Broadcasts the selected date range from the FluentMetric AI date filter to all dashboard components.</description>
+    <lightningMessageFields>
+        <fieldName>startDate</fieldName>
+        <description>Start of the selected date range (ISO-8601 string or DateTime).</description>
+    </lightningMessageFields>
+    <lightningMessageFields>
+        <fieldName>endDate</fieldName>
+        <description>End of the selected date range (ISO-8601 string or DateTime).</description>
+    </lightningMessageFields>
+    <lightningMessageFields>
+        <fieldName>presetLabel</fieldName>
+        <description>Human-readable label for the selected preset (e.g. "Last 30 days", "Custom").</description>
+    </lightningMessageFields>
+</LightningMessageChannel>

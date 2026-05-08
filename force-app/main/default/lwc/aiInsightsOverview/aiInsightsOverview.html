@@ -1,0 +1,346 @@
+<template>
+    <lightning-card title="Overview" icon-name="standard:dashboard">
+        <template lwc:if={dateRangeLabel}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">{dateRangeLabel}</span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={showEmptyState}>
+                <c-ai-insights-empty-state
+                    title={labels.emptyTitle}
+                    message={labels.emptyMessage}
+                    icon-name="standard:dashboard"
+                    show-setup-link="true"
+                    primary-action-label={labels.expandRange}
+                    onprimaryaction={handleExpandRange}>
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showCards}>
+                <!-- ─────────── Highlights ─────────── -->
+                <template lwc:if={hasHighlights}>
+                    <section aria-labelledby="fm-highlights-heading" class="slds-m-bottom_large">
+                    <h3 id="fm-highlights-heading" class="slds-text-heading_small slds-m-bottom_small slds-m-top_x-small">
+                        {labels.sectionHighlights}
+                        <lightning-helptext content={tooltips.highlights} class="slds-m-left_xx-small"></lightning-helptext>
+                    </h3>
+                    <div class="slds-grid slds-wrap slds-gutters_small slds-m-bottom_medium" role="list" aria-label="Highlight cards">
+                        <template lwc:if={hasTopUser}>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                                <div class="fm-highlight-card fm-highlight-card_user">
+                                    <div class="fm-highlight-card__icon">
+                                        <lightning-icon icon-name="standard:user" size="small" alternative-text="Most active user"></lightning-icon>
+                                    </div>
+                                    <div class="fm-highlight-card__body">
+                                        <p class="fm-highlight-card__label">Most active user</p>
+                                        <p class="fm-highlight-card__value" title={topUserName}>{topUserName}</p>
+                                        <p class="fm-highlight-card__meta">
+                                            <lightning-formatted-number value={topUserRequestCount} format-style="decimal"></lightning-formatted-number>
+                                            <span class="slds-m-left_xx-small">requests</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template lwc:if={hasTopPrompt}>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                                <div class="fm-highlight-card fm-highlight-card_prompt">
+                                    <div class="fm-highlight-card__icon">
+                                        <lightning-icon icon-name="standard:prompt_builder" size="small" alternative-text="Top prompt template"></lightning-icon>
+                                    </div>
+                                    <div class="fm-highlight-card__body">
+                                        <p class="fm-highlight-card__label">Top prompt</p>
+                                        <p class="fm-highlight-card__value" title={topPromptLabel}>{topPromptLabel}</p>
+                                        <p class="fm-highlight-card__meta">
+                                            <lightning-formatted-number value={topPromptInvocations} format-style="decimal"></lightning-formatted-number>
+                                            <span class="slds-m-left_xx-small">invocations</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template lwc:if={hasTopModel}>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                                <div class="fm-highlight-card fm-highlight-card_model">
+                                    <div class="fm-highlight-card__icon">
+                                        <lightning-icon icon-name="standard:einstein" size="small" alternative-text="Top-consuming model"></lightning-icon>
+                                    </div>
+                                    <div class="fm-highlight-card__body">
+                                        <p class="fm-highlight-card__label">Heaviest model</p>
+                                        <p class="fm-highlight-card__value" title={topModelName}>{topModelName}</p>
+                                        <p class="fm-highlight-card__meta">{topModelTokensDisplay}
+                                            <span class="slds-m-left_xx-small">tokens</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template lwc:if={hasTopFeature}>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                                <div class="fm-highlight-card fm-highlight-card_feature">
+                                    <div class="fm-highlight-card__icon">
+                                        <lightning-icon icon-name="standard:apex" size="small" alternative-text="Top calling feature"></lightning-icon>
+                                    </div>
+                                    <div class="fm-highlight-card__body">
+                                        <p class="fm-highlight-card__label">Top feature</p>
+                                        <p class="fm-highlight-card__value" title={topFeatureName}>{topFeatureName}</p>
+                                        <p class="fm-highlight-card__meta">
+                                            <lightning-formatted-number value={topFeatureRequestCount} format-style="decimal"></lightning-formatted-number>
+                                            <span class="slds-m-left_xx-small">requests</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    </section>
+                </template>
+
+                <!-- ─────────── KPI strip ─────────── -->
+                <section aria-labelledby="fm-key-metrics-heading">
+                <h3 id="fm-key-metrics-heading" class="slds-text-heading_small slds-m-bottom_small">{labels.sectionKeyMetrics}</h3>
+                <div class="slds-grid slds-wrap slds-gutters_small" role="list" aria-label="AI usage key metrics">
+                    <!-- Total Requests — primary KPI (double width on large screens) -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-3 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_primary">
+                            <p class="fm-card__label">
+                                <span>Total Requests</span>
+                                <lightning-helptext content={tooltips.totalRequests}></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <div class="fm-card__value-row">
+                                    <p class="fm-card__value">
+                                        <lightning-formatted-number value={totalRequestsValue} format-style="decimal"></lightning-formatted-number>
+                                    </p>
+                                    <template lwc:if={hasSparkRequests}>
+                                        <svg class="fm-sparkline" viewBox="0 0 80 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                                            <polyline points={sparkRequests} fill="none" stroke-width="1.5"></polyline>
+                                        </svg>
+                                    </template>
+                                </div>
+                                <template lwc:if={deltaRequests}>
+                                    <p class={deltaRequests.class} aria-label={deltaRequests.ariaLabel}>
+                                        <lightning-icon icon-name={deltaRequests.icon} size="xx-small" alternative-text=""></lightning-icon>
+                                        <span class="slds-m-left_xx-small">{deltaRequests.display}</span>
+                                        <span class="slds-m-left_xx-small slds-text-color_weak">{deltaRequests.windowText}</span>
+                                    </p>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Unique Users — primary KPI -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-3 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_primary">
+                            <p class="fm-card__label">
+                                <span>Unique Users</span>
+                                <lightning-helptext content={tooltips.uniqueUsers}></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="fm-card__value">
+                                    <lightning-formatted-number value={uniqueUsersValue} format-style="decimal"></lightning-formatted-number>
+                                </p>
+                                <template lwc:if={deltaUniqueUsers}>
+                                    <p class={deltaUniqueUsers.class} aria-label={deltaUniqueUsers.ariaLabel}>
+                                        <lightning-icon icon-name={deltaUniqueUsers.icon} size="xx-small" alternative-text=""></lightning-icon>
+                                        <span class="slds-m-left_xx-small">{deltaUniqueUsers.display}</span>
+                                        <span class="slds-m-left_xx-small slds-text-color_weak">{deltaUniqueUsers.windowText}</span>
+                                    </p>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Acceptance Rate -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-6 slds-p-bottom_small" role="listitem">
+                        <div class={acceptanceRateClass}>
+                            <p class="fm-card__label">
+                                <span>Acceptance Rate</span>
+                                <lightning-helptext content={tooltips.acceptanceRate}></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="fm-card__value">{acceptanceRateDisplay}</p>
+                                <template lwc:if={acceptanceRateToneLabel}>
+                                    <p class="fm-card__tone">
+                                        <lightning-icon icon-name={acceptanceRateIcon} size="xx-small" alternative-text=""></lightning-icon>
+                                        <span class="slds-m-left_xx-small">{acceptanceRateToneLabel}</span>
+                                    </p>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Total Tokens -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-6 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_neutral" title={totalTokensTitle}>
+                            <p class="fm-card__label">
+                                <span>Total Tokens</span>
+                                <lightning-helptext content={totalTokensTooltip}></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="fm-card__value">{totalTokensDisplay}</p>
+                                <template lwc:if={deltaTokens}>
+                                    <p class={deltaTokens.class} aria-label={deltaTokens.ariaLabel}>
+                                        <lightning-icon icon-name={deltaTokens.icon} size="xx-small" alternative-text=""></lightning-icon>
+                                        <span class="slds-m-left_xx-small">{deltaTokens.display}</span>
+                                    </p>
+                                </template>
+                                <template lwc:if={hasSparkTokens}>
+                                    <svg class="fm-sparkline fm-sparkline_inline" viewBox="0 0 80 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                                        <polyline points={sparkTokens} fill="none" stroke-width="1.5"></polyline>
+                                    </svg>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Feedback Given -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-6 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_neutral">
+                            <p class="fm-card__label">
+                                <span>Feedback Given</span>
+                                <lightning-helptext content={tooltips.feedbackCount}></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="fm-card__value">
+                                    <lightning-formatted-number value={feedbackCountValue} format-style="decimal"></lightning-formatted-number>
+                                </p>
+                                <template lwc:if={deltaFeedback}>
+                                    <p class={deltaFeedback.class} aria-label={deltaFeedback.ariaLabel}>
+                                        <lightning-icon icon-name={deltaFeedback.icon} size="xx-small" alternative-text=""></lightning-icon>
+                                        <span class="slds-m-left_xx-small">{deltaFeedback.display}</span>
+                                    </p>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Safety Flags -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-6 slds-p-bottom_small" role="listitem">
+                        <div class={safetyFlagClass}>
+                            <p class="fm-card__label">
+                                <span>Safety Flags</span>
+                                <lightning-helptext content={tooltips.toxicFlagCount}></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="fm-card__value">
+                                    <lightning-formatted-number value={safetyFlagCountValue} format-style="decimal"></lightning-formatted-number>
+                                </p>
+                                <p class="fm-card__tone">
+                                    <lightning-icon icon-name={safetyFlagIcon} size="xx-small" alternative-text=""></lightning-icon>
+                                    <span class="slds-m-left_xx-small">{safetyFlagToneLabel}</span>
+                                </p>
+                                <template lwc:if={hasSparkToxic}>
+                                    <svg class="fm-sparkline fm-sparkline_inline fm-sparkline_danger" viewBox="0 0 80 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                                        <polyline points={sparkToxic} fill="none" stroke-width="1.5"></polyline>
+                                    </svg>
+                                </template>
+                                <template lwc:if={deltaToxic}>
+                                    <p class={deltaToxic.class} aria-label={deltaToxic.ariaLabel}>
+                                        <lightning-icon icon-name={deltaToxic.icon} size="xx-small" alternative-text=""></lightning-icon>
+                                        <span class="slds-m-left_xx-small">{deltaToxic.display}</span>
+                                    </p>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Avg tokens per request — token math only, no cost
+                         inference. Cost figures live on the dedicated
+                         "Cost analysis (Estimated)" tab, gated by
+                         Enable_Cost_Metrics__c. -->
+                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3 slds-large-size_1-of-6 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_neutral">
+                            <p class="fm-card__label">
+                                <span>Avg Tokens / Request</span>
+                                <lightning-helptext content="Average token size per request (input + output ÷ total requests)."></lightning-helptext>
+                            </p>
+                            <template lwc:if={isLoading}>
+                                <div class="fm-card__spinner">
+                                    <lightning-spinner alternative-text="Loading" size="small" variant="brand"></lightning-spinner>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="fm-card__value">{avgTokensPerRequestDisplay}</p>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                </section>
+
+                <!-- ─────────── Top Contributors leaderboard ─────────── -->
+                <template lwc:if={hasTopUsersRows}>
+                    <section aria-labelledby="fm-top-contributors-heading" class="slds-m-top_large">
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                            <h3 id="fm-top-contributors-heading" class="slds-text-heading_small">Top contributors</h3>
+                            <div class="slds-button-group" role="group" aria-label="Sort top contributors">
+                                <button type="button"
+                                    data-sort="tokens"
+                                    class={topUsersTokensClass}
+                                    aria-pressed={topUsersByTokensActive}
+                                    onclick={handleTopUsersSortToggle}>By tokens</button>
+                                <button type="button"
+                                    data-sort="requests"
+                                    class={topUsersRequestsClass}
+                                    aria-pressed={topUsersByRequestsActive}
+                                    onclick={handleTopUsersSortToggle}>By requests</button>
+                            </div>
+                        </div>
+                        <ul class="fm-top-contributors" role="list">
+                            <template for:each={topUsersRows} for:item="row">
+                                <li key={row.userId} class="fm-top-contributors__row">
+                                    <span class="fm-top-contributors__name" title={row.userName}>{row.userName}</span>
+                                    <span class="fm-top-contributors__bar" aria-hidden="true">
+                                        <span class="fm-top-contributors__bar-fill" style={row.barStyle}></span>
+                                    </span>
+                                    <span class="fm-top-contributors__primary">{row.primaryDisplay}</span>
+                                    <span class="fm-top-contributors__secondary slds-text-color_weak">{row.secondaryDisplay}</span>
+                                </li>
+                            </template>
+                        </ul>
+                    </section>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>

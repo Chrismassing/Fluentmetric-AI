@@ -1,0 +1,104 @@
+.fm-filter-rail {
+    padding: var(--slds-g-spacing-2, 0.5rem) 0;
+}
+
+/* ── Section accordion ── */
+
+.fm-section__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--slds-g-spacing-2, 0.5rem) var(--slds-g-spacing-3, 0.75rem);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.0625rem;
+    text-transform: uppercase;
+    color: var(--slds-g-color-neutral-base-30, #3e3e3c);
+    border-bottom: 1px solid var(--slds-g-color-border-1, #e5e5e5);
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.fm-section__title:hover,
+.fm-section__title:focus-visible {
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    outline: none;
+}
+
+.fm-section__chevron {
+    display: flex;
+    align-items: center;
+    transition: transform 0.15s ease;
+}
+
+.fm-section--collapsed .fm-section__chevron {
+    transform: rotate(-90deg);
+}
+
+.fm-section__body {
+    padding: var(--slds-g-spacing-3, 0.75rem) var(--slds-g-spacing-3, 0.75rem)
+        var(--slds-g-spacing-4, 1rem);
+}
+
+.fm-section--collapsed .fm-section__body {
+    display: none;
+}
+
+/* ── Collapsed rail strip ── */
+
+.fm-filter-rail_collapsed {
+    padding: var(--slds-g-spacing-2, 0.5rem) 0;
+    width: 3rem;
+    min-width: 3rem;
+    overflow: hidden;
+}
+
+.fm-filter-rail__collapsed-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: var(--slds-g-spacing-3, 0.75rem) var(--slds-g-spacing-2, 0.5rem);
+    gap: var(--slds-g-spacing-2, 0.5rem);
+    color: var(--slds-g-color-neutral-base-40, #444);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.fm-filter-rail__collapsed-btn:hover,
+.fm-filter-rail__collapsed-btn:focus-visible {
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    outline: none;
+}
+
+.fm-filter-rail__collapsed-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.0625rem;
+    text-transform: uppercase;
+}
+
+.fm-filter-rail__count {
+    margin-top: var(--slds-g-spacing-1, 0.25rem);
+}
+
+/* ── Header toggle button ── */
+
+.fm-filter-rail__toggle {
+    flex-shrink: 0;
+}
+
+/* ── User typeahead dropdown ── */
+
+.fm-user-results {
+    max-height: 14rem;
+    overflow-y: auto;
+    border: 1px solid var(--slds-g-color-border-1, #dddbda);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    background: var(--slds-g-color-surface-1, #fff);
+}

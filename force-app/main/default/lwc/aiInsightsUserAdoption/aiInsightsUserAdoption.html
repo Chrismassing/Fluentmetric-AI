@@ -1,0 +1,82 @@
+<template>
+    <lightning-card title="User Adoption" icon-name="standard:user">
+        <template lwc:if={resultSummary}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">{resultSummary}</span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <!-- Search bar is always visible so users can orient themselves even while loading. -->
+            <div class="slds-m-bottom_small">
+                <lightning-input
+                    type="search"
+                    label="Search users"
+                    variant="label-hidden"
+                    placeholder="Filter by user name or department..."
+                    value={searchTerm}
+                    onchange={handleSearch}>
+                </lightning-input>
+            </div>
+
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={isLoading}>
+                <div class="fm-spinner-wrap" role="status">
+                    <lightning-spinner alternative-text="Loading user adoption data" size="medium" variant="brand"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:if={showEmptyState}>
+                <c-ai-insights-empty-state
+                    title="No user activity in this range"
+                    message="No users have used Einstein AI features within the selected date range. Try expanding the range."
+                    icon-name="standard:user">
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showNoMatches}>
+                <c-ai-insights-empty-state
+                    title="No matches"
+                    message="No users match the current search. Try clearing the filter."
+                    icon-name="utility:search">
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showTable}>
+                <template lwc:if={hasData}>
+                    <div class="fm-datatable" role="region" aria-label="User adoption table">
+                        <lightning-datatable
+                            key-field="userId"
+                            data={visibleRows}
+                            columns={columns}
+                            sorted-by={sortedBy}
+                            sorted-direction={sortedDirection}
+                            onsort={handleSort}
+                            onrowaction={handleRowAction}
+                            hide-checkbox-column
+                            column-widths-mode="auto">
+                        </lightning-datatable>
+                    </div>
+
+                    <template lwc:if={showLoadMore}>
+                        <div class="slds-text-align_center slds-m-top_small">
+                            <lightning-button
+                                label="Load more"
+                                icon-name="utility:down"
+                                icon-position="right"
+                                onclick={handleLoadMore}>
+                            </lightning-button>
+                        </div>
+                    </template>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Entity drill-in modal — opened by handleRowAction when a user row is clicked -->
+    <c-ai-insights-details-modal></c-ai-insights-details-modal>
+</template>

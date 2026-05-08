@@ -1,0 +1,151 @@
+<template>
+    <lightning-card title="Token Consumption" icon-name="standard:metrics">
+        <template lwc:if={groupingSummary}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">{groupingSummary}</span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <!-- Controls -->
+            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        name="groupBy"
+                        label="Group by"
+                        value={groupBy}
+                        options={groupByOptions}
+                        onchange={handleGroupByChange}>
+                    </lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_2-of-3 slds-text-align_right">
+                    <span class="fm-legend">
+                        <span class="fm-legend__swatch fm-legend__swatch_input"></span>
+                        <span class="slds-m-right_small">Input tokens</span>
+                        <span class="fm-legend__swatch fm-legend__swatch_output"></span>
+                        <span>Output tokens</span>
+                    </span>
+                </div>
+            </div>
+
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={isLoading}>
+                <div class="fm-spinner-wrap" role="status">
+                    <lightning-spinner alternative-text="Loading token consumption" size="medium" variant="brand"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:if={showEmptyState}>
+                <c-ai-insights-empty-state
+                    title={labels.emptyTitle}
+                    message={labels.emptyMessage}
+                    icon-name="standard:metrics"
+                    primary-action-label={labels.expandRange}
+                    onprimaryaction={handleExpandRange}>
+                </c-ai-insights-empty-state>
+            </template>
+
+            <!-- Per-day trend strip — visual overview of daily token volume
+                 across the selected window. Decorative (no interactions);
+                 the detail table below is the drill-in surface. -->
+            <template lwc:if={hasTrendColumns}>
+                <div class="fm-trend-strip" role="img" aria-label="Daily tokens trend">
+                    <template for:each={trendColumns} for:item="col">
+                        <div class="fm-trend-strip__col" key={col.key} title={col.title}>
+                            <div class="fm-trend-strip__bar" style={col.heightStyle}></div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- Chart -->
+            <template lwc:if={showChart}>
+                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                    <h3 class="slds-text-heading_small slds-col">Chart</h3>
+                    <lightning-button-icon
+                        icon-name={chartToggleIcon}
+                        alternative-text={chartToggleLabel}
+                        variant="bare"
+                        size="small"
+                        onclick={handleToggleChart}>
+                    </lightning-button-icon>
+                </div>
+                <template lwc:if={chartVisible}>
+                    <div class="fm-chart" role="list" aria-label="Token consumption by group">
+                        <template for:each={chartRows} for:item="row">
+                            <div class="fm-chart__row" key={row.groupKey} role="listitem" aria-label={row.ariaLabel}>
+                                <div class="fm-chart__label" title={row.groupLabel}>{row.groupLabel}</div>
+                                <div class="fm-chart__bar-wrap">
+                                    <div class="fm-chart__bar" style={row.barStyle}>
+                                        <div class="fm-chart__segment fm-chart__segment_input" style={row.inputSegmentStyle}></div>
+                                        <div class="fm-chart__segment fm-chart__segment_output" style={row.outputSegmentStyle}></div>
+                                    </div>
+                                </div>
+                                <div class="fm-chart__value">
+                                    <span class="slds-text-title_bold">{row.totalDisplay}</span>
+                                    <span class="slds-text-color_weak slds-m-left_xx-small">({row.sharePctDisplay})</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </template>
+
+            <!-- Table — hand-rolled so the Group cell reliably fires the
+                 drill-in (lightning-datatable button cells proved brittle
+                 across themes + cache states in earlier rounds). -->
+            <template lwc:if={showTable}>
+                <div class="slds-m-top_large">
+                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">Detail</h3>
+                    <div class="fm-detail-table-wrap" role="region" aria-label="Token consumption table">
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">
+                                        <span class="slds-truncate">Group</span>
+                                        <lightning-helptext content={groupColumnTooltip}></lightning-helptext>
+                                    </th>
+                                    <th scope="col" class="slds-text-align_right">Input</th>
+                                    <th scope="col" class="slds-text-align_right">Output</th>
+                                    <th scope="col" class="slds-text-align_right">Total</th>
+                                    <th scope="col" class="slds-text-align_right">Requests</th>
+                                    <th scope="col" class="slds-text-align_right">Avg/req</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={tableRows} for:item="row">
+                                    <tr key={row.groupKey}>
+                                        <td>
+                                            <template lwc:if={row.drillDisabled}>
+                                                <span class="slds-truncate">{row.groupLabel}</span>
+                                            </template>
+                                            <template lwc:if={row.drillEnabled}>
+                                                <a href="javascript:void(0)"
+                                                    class="fm-drill-link"
+                                                    data-group-key={row.groupKey}
+                                                    data-group-label={row.groupLabel}
+                                                    onclick={handleGroupClick}>{row.groupLabel}</a>
+                                            </template>
+                                        </td>
+                                        <td class="slds-text-align_right">{row.inputTokensDisplay}</td>
+                                        <td class="slds-text-align_right">{row.outputTokensDisplay}</td>
+                                        <td class="slds-text-align_right">{row.totalTokensDisplay}</td>
+                                        <td class="slds-text-align_right">{row.requestCount}</td>
+                                        <td class="slds-text-align_right">{row.avgPerRequestDisplay}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Entity drill-in modal — opened when a Group button cell is clicked -->
+    <c-ai-insights-details-modal></c-ai-insights-details-modal>
+</template>

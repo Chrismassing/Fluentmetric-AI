@@ -1,0 +1,91 @@
+<template>
+    <div class="slds-p-around_small">
+        <!-- ──────────── Header + Date Filter (outside the tabset) ──────────── -->
+        <header class="slds-m-bottom_small">
+            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-end slds-wrap">
+                <div class="slds-col">
+                    <h1 class="slds-text-heading_large">{labels.appTitle}</h1>
+                    <p class="slds-text-body_regular slds-text-color_weak">
+                        {labels.appSubtitle}
+                    </p>
+                </div>
+                <div class="slds-col fm-app-date-filter">
+                    <c-ai-insights-date-filter></c-ai-insights-date-filter>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main tabset — full width. The filter rail and pills only appear
+             on the Explorer tab since filters only apply there today. -->
+        <div class="slds-card fm-app-tabs">
+            <lightning-tabset variant="standard" class="fm-tabset">
+                <lightning-tab
+                    label="Overview"
+                    icon-name="utility:dashboard"
+                    title={tooltips.tabOverview}>
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-overview></c-ai-insights-overview>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab
+                    label="Users"
+                    icon-name="utility:user"
+                    title={tooltips.tabUsers}>
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-user-adoption></c-ai-insights-user-adoption>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab
+                    label="Tokens"
+                    icon-name="utility:number_input"
+                    title={tooltips.tabTokens}>
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-token-consumption></c-ai-insights-token-consumption>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab
+                    label="Cost analysis"
+                    icon-name="utility:money"
+                    title="Estimated cost panel — gated by Enable_Cost_Metrics__c. Shows tier-based USD and Flex Credit figures with confidence badges. Default dashboards show tokens only; this tab is the only surface where cost estimates appear.">
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-cost-analysis></c-ai-insights-cost-analysis>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab
+                    label="Safety"
+                    icon-name="utility:shield"
+                    title={tooltips.tabSafety}>
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-safety></c-ai-insights-safety>
+                    </div>
+                </lightning-tab>
+
+                <!-- Explorer: rail + pills in a two-column layout inside the tab. -->
+                <lightning-tab
+                    label="Explorer"
+                    icon-name="utility:search"
+                    title={tooltips.tabExplorer}>
+                    <div class="slds-grid slds-gutters_small slds-wrap slds-p-top_small">
+                        <main class={mainColumnClass}>
+                            <c-ai-insights-filter-pills></c-ai-insights-filter-pills>
+                            <div class="slds-m-top_small">
+                                <c-ai-insights-explorer></c-ai-insights-explorer>
+                            </div>
+                        </main>
+                        <aside class={railColumnClass}>
+                            <div class="slds-box slds-box_x-small slds-theme_default">
+                                <c-ai-insights-filter-rail
+                                    onrailtoggle={handleRailToggle}>
+                                </c-ai-insights-filter-rail>
+                            </div>
+                        </aside>
+                    </div>
+                </lightning-tab>
+            </lightning-tabset>
+        </div>
+    </div>
+</template>

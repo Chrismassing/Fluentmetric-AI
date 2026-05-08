@@ -1,0 +1,105 @@
+/*
+ * Full-text modal styles. All sizing uses SLDS design tokens so dark mode
+ * and theming apply automatically.
+ */
+
+/* Text modal has to stack ABOVE the details modal when opened on top of it.
+   SLDS modals default to z-index: 9001; we bump ours to 9050 so the nesting
+   renders correctly. The backdrop gets a matching boost so clicks don't
+   leak through to the details modal underneath. */
+:host {
+    --fm-modal-z: 9050;
+}
+.slds-modal {
+    z-index: var(--fm-modal-z);
+}
+.slds-backdrop {
+    z-index: calc(var(--fm-modal-z) - 1);
+}
+
+/* Bound the container to ~80vw × 80vh so long prompts scroll rather than
+   push the footer off-screen. SLDS default .slds-modal__container is wider
+   than we want for a dense text view. */
+.slds-modal__container {
+    max-width: 80vw;
+    width: 80vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.fm-modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+/* Metadata row above the body. Each item is inline-flex for vertical alignment. */
+.fm-metadata-row {
+    padding-bottom: var(--slds-g-spacing-2, 0.5rem);
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    margin-bottom: var(--slds-g-spacing-3, 0.75rem);
+}
+
+.fm-metadata-item {
+    font-size: var(--slds-g-font-size-2, 0.8125rem);
+}
+
+/* The header has a dark brand background, so the close button must be a
+   high-contrast light icon. SLDS's default bare-inverse variant can render
+   invisibly against some themes; we force the colors so the X is always
+   visible. */
+.fm-modal-header {
+    background: var(--slds-g-color-brand-base-30, #014486);
+    color: #fff;
+    position: relative;
+}
+.fm-modal-header .slds-modal__title {
+    color: #fff;
+}
+.fm-modal-close-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 120ms ease;
+}
+.fm-modal-close-btn:hover,
+.fm-modal-close-btn:focus {
+    background: rgba(255, 255, 255, 0.25);
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+}
+.fm-modal-close-btn lightning-icon {
+    --sds-c-icon-color-foreground-default: #fff;
+    --sds-c-icon-color-foreground: #fff;
+}
+
+/* The body <pre> preserves whitespace and newlines — prompts and outputs are
+   structured text with role:system lines, bullets, and sometimes code. */
+.fm-modal-pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--slds-g-font-family-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: var(--slds-g-font-size-2, 0.8125rem);
+    line-height: 1.5;
+    background-color: var(--slds-g-color-surface-container-1, #fafafa);
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    padding: var(--slds-g-spacing-3, 0.75rem);
+    margin: 0;
+    min-height: 8rem;
+    overflow: auto;
+    /* Override default slds-textarea fixed height — we want full scroll. */
+    height: auto;
+    resize: none;
+}

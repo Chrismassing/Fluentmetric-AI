@@ -1,0 +1,115 @@
+<template>
+    <lightning-card title="Cost Analysis (Estimated)" icon-name="utility:money">
+        <template lwc:if={dateRangeLabel}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">{dateRangeLabel}</span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <!-- Honesty banner. Persistent per user until dismissed. -->
+            <template lwc:if={showBanner}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_warning slds-m-bottom_medium fm-cost-banner" role="status">
+                    <div class="slds-grid slds-grid_vertical-align-start slds-gutters_small">
+                        <div class="slds-col slds-no-flex">
+                            <lightning-icon icon-name="utility:info_alt" size="small" alternative-text="Info"></lightning-icon>
+                        </div>
+                        <div class="slds-col">
+                            <p class="slds-text-body_regular">
+                                <strong>Estimates, not billing.</strong>
+                                These Flex Credit and USD figures are calculated from Salesforce public tier pricing ×
+                                observed token counts. Actual billing lives in <em>Setup → Flex Credit Usage</em>.
+                                Use this panel for directional analysis only.
+                            </p>
+                        </div>
+                        <div class="slds-col slds-no-flex">
+                            <lightning-button-icon
+                                icon-name="utility:close"
+                                variant="bare"
+                                alternative-text="Dismiss estimates notice"
+                                title="Dismiss estimates notice"
+                                onclick={handleDismissBanner}>
+                            </lightning-button-icon>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Opt-in gate: when disabled, show an admin empty state
+                 instead of $0. -->
+            <template lwc:if={showDisabledState}>
+                <c-ai-insights-empty-state
+                    title="Cost metrics are off"
+                    message="Admins can enable estimated cost figures in Setup → Custom Settings → FluentMetric_Cost_Settings__c (Enable_Cost_Metrics__c = true). Defaults to off so orgs see only raw DMO data unless they opt in to tier-based estimates."
+                    icon-name="utility:money">
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showLoading}>
+                <div class="fm-spinner-wrap" role="status">
+                    <lightning-spinner alternative-text="Loading cost analysis" size="medium" variant="brand"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={showCards}>
+                <div class="slds-grid slds-wrap slds-gutters_small" role="list" aria-label="Estimated cost">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_primary">
+                            <p class="fm-card__label">Estimated USD (after discount)</p>
+                            <p class="fm-card__value">
+                                {estimatedUsdDisplay}
+                                <c-ai-insights-cost-badge confidence={costConfidence} compact></c-ai-insights-cost-badge>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_neutral">
+                            <p class="fm-card__label">Estimated USD (base, pre-discount)</p>
+                            <p class="fm-card__value">
+                                {estimatedUsdBaseDisplay}
+                                <c-ai-insights-cost-badge confidence={costConfidence} compact></c-ai-insights-cost-badge>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                        <div class="fm-card fm-card_neutral">
+                            <p class="fm-card__label">Flex Credits</p>
+                            <p class="fm-card__value">
+                                {estimatedFlexCreditsDisplay}
+                                <c-ai-insights-cost-badge confidence={costConfidence} compact></c-ai-insights-cost-badge>
+                            </p>
+                        </div>
+                    </div>
+                    <template lwc:if={hasAgentforceActions}>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
+                            <div class="fm-card fm-card_neutral">
+                                <p class="fm-card__label">Agentforce Actions</p>
+                                <p class="fm-card__value">
+                                    {agentforceActionCountDisplay}
+                                    <c-ai-insights-cost-badge confidence="HIGH" compact></c-ai-insights-cost-badge>
+                                </p>
+                                <p class="fm-card__tone slds-text-color_weak">{agentforceUsdDisplay} · 20 FC / action</p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Inline rate-card settings for admins tuning the estimates.
+                     Co-locating the knob next to the numbers it affects is
+                     faster than hopping to Setup. -->
+                <section class="slds-m-top_large" aria-labelledby="fm-cost-settings-heading">
+                    <h3 id="fm-cost-settings-heading" class="slds-text-heading_small slds-m-bottom_small">
+                        Rate-card settings
+                        <lightning-helptext content="Adjust USD-per-Flex-Credit, contracted discount, and fallback model. Live preview only; save persists to the hierarchy custom setting." class="slds-m-left_xx-small"></lightning-helptext>
+                    </h3>
+                    <c-ai-insights-cost-settings></c-ai-insights-cost-settings>
+                </section>
+            </template>
+        </div>
+    </lightning-card>
+</template>

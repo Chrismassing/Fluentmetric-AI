@@ -1,0 +1,10 @@
+<template>
+    <template lwc:if={label}>
+        <span class={badgeClass} title={tooltip} role="status" aria-label={tooltip}>
+            <template lwc:if={isNotCosted}>
+                <lightning-icon icon-name="utility:warning" size="xx-small" alternative-text="Not costed" class="slds-m-right_xx-small"></lightning-icon>
+            </template>
+            {label}
+        </span>
+    </template>
+</template>

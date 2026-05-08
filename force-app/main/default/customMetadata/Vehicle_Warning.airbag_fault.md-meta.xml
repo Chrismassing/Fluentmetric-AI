@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Airbag System Fault</label>
+    <protected>false</protected>
+    <values>
+        <field>Plain_Language_Explanation__c</field>
+        <value xsi:type="xsd:string">Airbag system self-test failed.</value>
+    </values>
+    <values>
+        <field>Recommended_Action__c</field>
+        <value xsi:type="xsd:string">Contact service before next drive.</value>
+    </values>
+    <values>
+        <field>Requires_Immediate_Stop__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Service_Contact_Recommended__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Severity__c</field>
+        <value xsi:type="xsd:string">high</value>
+    </values>
+    <values>
+        <field>Warning_Key__c</field>
+        <value xsi:type="xsd:string">airbag_fault</value>
+    </values>
+</CustomMetadata>

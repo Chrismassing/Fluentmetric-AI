@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Flex_Credits_Per_Call__c</fullName>
+    <description>DEPRECATED as of v1.5. Salesforce bills Flex Credits per tier-per-invocation, not per model. Pricing is now driven by Tier__c against FluentMetric_Cost_Settings__c.Tier_Basic_FC__c / Tier_Standard_FC__c / Tier_Advanced_FC__c. This field is retained as a nullable override escape hatch but is no longer consulted by the primary cost path.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Flex Credits Per Call</label>
+    <precision>6</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

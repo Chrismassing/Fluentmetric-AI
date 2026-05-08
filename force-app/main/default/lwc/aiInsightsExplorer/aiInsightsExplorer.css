@@ -1,0 +1,62 @@
+/*
+ * Explorer styles. Chart rendering mirrors aiInsightsTokenConsumption so
+ * Phase 3 feels visually coherent. All colors reference SLDS design tokens.
+ */
+
+.fm-spinner-wrap {
+    position: relative;
+    min-height: 6rem;
+}
+
+.fm-datatable {
+    overflow-x: auto;
+}
+
+.fm-pending-filter {
+    background-color: var(--slds-g-color-surface-container-1, #fafafa);
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+}
+
+/* --- Bar chart (single-segment, brand color) ---------------------------- */
+
+.fm-chart {
+    display: flex;
+    flex-direction: column;
+    gap: var(--slds-g-spacing-1, 0.25rem);
+}
+
+.fm-chart__row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 14rem) 1fr minmax(6rem, 8rem);
+    align-items: center;
+    gap: var(--slds-g-spacing-2, 0.5rem);
+    padding: var(--slds-g-spacing-1, 0.25rem) 0;
+}
+
+.fm-chart__label {
+    font-size: var(--slds-g-font-size-2, 0.8125rem);
+    color: var(--slds-g-color-neutral-base-10, #181818);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fm-chart__bar-wrap {
+    background-color: var(--slds-g-color-surface-container-1, #f3f3f3);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    height: 1.25rem;
+    overflow: hidden;
+}
+
+.fm-chart__bar {
+    height: 100%;
+    min-width: 2px;
+    background-color: var(--slds-g-color-brand-base-50, #0176d3);
+    transition: width 250ms ease-out;
+}
+
+.fm-chart__value {
+    text-align: right;
+    font-size: var(--slds-g-font-size-2, 0.8125rem);
+}

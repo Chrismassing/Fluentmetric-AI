@@ -1,0 +1,36 @@
+<template>
+    <div class="slds-illustration slds-illustration_small slds-p-vertical_large slds-text-align_center" role="status" aria-live="polite">
+        <div class="slds-m-bottom_small">
+            <lightning-icon icon-name={iconName} size="large" alternative-text={title} variant={iconVariant}></lightning-icon>
+        </div>
+        <h3 class="slds-text-heading_medium slds-m-bottom_x-small">{title}</h3>
+        <template lwc:if={message}>
+            <p class="slds-text-body_regular slds-text-color_weak slds-p-horizontal_large">{message}</p>
+        </template>
+        <template lwc:if={hasAnyAction}>
+            <div class="slds-m-top_medium slds-grid slds-grid_align-center slds-wrap slds-gutters_xx-small">
+                <template lwc:if={hasPrimaryAction}>
+                    <lightning-button
+                        label={primaryActionLabel}
+                        variant="brand"
+                        onclick={handlePrimaryAction}
+                        class="slds-m-horizontal_xx-small">
+                    </lightning-button>
+                </template>
+                <template lwc:if={hasSecondaryAction}>
+                    <lightning-button
+                        label={secondaryActionLabel}
+                        variant="neutral"
+                        onclick={handleSecondaryAction}
+                        class="slds-m-horizontal_xx-small">
+                    </lightning-button>
+                </template>
+            </div>
+        </template>
+        <template lwc:if={showSetupLink}>
+            <div class="slds-m-top_medium">
+                <a href="#" onclick={handleSetupClick} class="slds-text-link">{setupLabel}</a>
+            </div>
+        </template>
+    </div>
+</template>

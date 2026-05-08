@@ -1,0 +1,17 @@
+<template>
+    <template lwc:if={hasPills}>
+        <div class="slds-box slds-box_x-small slds-m-bottom_small fm-filter-pills" role="region" aria-label="Active filters">
+            <span class="slds-text-title_caps slds-text-color_weak slds-m-right_x-small">Filters</span>
+            <template for:each={pills} for:item="p">
+                <lightning-pill
+                    key={p.pillKey}
+                    label={p.label}
+                    data-dim={p.dim}
+                    data-value={p.value}
+                    onremove={handleRemove}
+                    class="slds-m-right_x-small slds-m-bottom_x-small">
+                </lightning-pill>
+            </template>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,241 @@
+<template>
+    <lightning-card title="Explorer" icon-name="standard:dashboard_ea">
+        <template lwc:if={resultSummary}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">{resultSummary}</span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <!-- ───── Starter chips (only until first interaction) ────────
+                 Gives new users a one-click path into the most common
+                 questions. Dismisses automatically once the user runs any
+                 query so the row doesn't add clutter for returning users. -->
+            <template lwc:if={showStarters}>
+                <div class="slds-box slds-theme_shade slds-m-bottom_medium" role="region" aria-label={labels.starterHeading}>
+                    <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_x-small">
+                        {labels.starterHeading}
+                    </p>
+                    <div class="slds-grid slds-wrap slds-gutters_x-small">
+                        <lightning-button
+                            label={labels.starterTopPrompts}
+                            icon-name="utility:prompt_builder"
+                            icon-position="left"
+                            variant="neutral"
+                            data-preset="top_prompts"
+                            onclick={handleStarterClick}
+                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                        </lightning-button>
+                        <lightning-button
+                            label={labels.starterFlagged}
+                            icon-name="utility:warning"
+                            icon-position="left"
+                            variant="neutral"
+                            data-preset="flagged"
+                            onclick={handleStarterClick}
+                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                        </lightning-button>
+                        <lightning-button
+                            label={labels.starterHeavyUsers}
+                            icon-name="utility:user"
+                            icon-position="left"
+                            variant="neutral"
+                            data-preset="heavy_users"
+                            onclick={handleStarterClick}
+                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                        </lightning-button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ───── Controls row ───────────────────────────────────── -->
+            <div class="slds-grid slds-wrap slds-gutters_small slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <lightning-combobox
+                        name="groupBy"
+                        label="Group by"
+                        value={groupBy}
+                        options={groupByOptions}
+                        onchange={handleGroupByChange}>
+                    </lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <lightning-combobox
+                        name="metric"
+                        label="Metric"
+                        value={metric}
+                        options={metricOptions}
+                        onchange={handleMetricChange}>
+                    </lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4 slds-align-bottom">
+                    <lightning-button-menu
+                        alternative-text="Add filter"
+                        label="Add filter"
+                        icon-name="utility:add"
+                        onselect={handleAddFilterMenuSelect}
+                        menu-alignment="left">
+                        <template for:each={filterTypeOptions} for:item="opt">
+                            <lightning-menu-item
+                                key={opt.value}
+                                value={opt.value}
+                                label={opt.label}>
+                            </lightning-menu-item>
+                        </template>
+                    </lightning-button-menu>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4 slds-align-bottom slds-text-align_right">
+                    <lightning-button-icon
+                        icon-name="utility:download"
+                        variant="border"
+                        alternative-text="Export to CSV"
+                        title="Export to CSV"
+                        disabled={showExportDisabled}
+                        onclick={handleExportCsv}>
+                    </lightning-button-icon>
+                </div>
+            </div>
+
+            <!-- Pending filter value picker -->
+            <template lwc:if={hasPendingFilter}>
+                <div class="slds-box slds-box_x-small slds-m-bottom_small fm-pending-filter">
+                    <div class="slds-grid slds-grid_vertical-align-end slds-gutters_small slds-wrap">
+                        <div class="slds-col">
+                            <lightning-combobox
+                                name="pendingValue"
+                                label={pendingFilterTypeLabel}
+                                value={pendingFilterValue}
+                                options={pendingFilterValueOptions}
+                                placeholder="Pick a value..."
+                                onchange={handlePendingValueChange}>
+                            </lightning-combobox>
+                        </div>
+                        <div class="slds-col slds-no-flex">
+                            <lightning-button
+                                variant="brand"
+                                label="Add"
+                                onclick={handleConfirmPendingFilter}>
+                            </lightning-button>
+                        </div>
+                        <div class="slds-col slds-no-flex">
+                            <lightning-button
+                                variant="neutral"
+                                label="Cancel"
+                                onclick={handleCancelPendingFilter}>
+                            </lightning-button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Active filter pills -->
+            <template lwc:if={hasFilters}>
+                <div class="slds-m-bottom_small" role="list" aria-label="Active filters">
+                    <template for:each={filters} for:item="f">
+                        <lightning-pill
+                            key={f.key}
+                            label={f.label}
+                            data-key={f.key}
+                            onremove={handleRemoveFilter}
+                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                        </lightning-pill>
+                    </template>
+                </div>
+            </template>
+
+            <!-- ───── Error / loading / empty ─────────────────────────── -->
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={isLoading}>
+                <div class="fm-spinner-wrap" role="status">
+                    <lightning-spinner alternative-text="Running explorer query" size="medium" variant="brand"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:if={showEmptyState}>
+                <c-ai-insights-empty-state
+                    title="No data for this pivot"
+                    message="No results for the selected combination. Try a wider date range or a different Group by."
+                    icon-name="standard:dashboard_ea">
+                </c-ai-insights-empty-state>
+            </template>
+
+            <!-- ───── Results ─────────────────────────────────────────── -->
+            <template lwc:if={showResults}>
+                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                    <h3 class="slds-text-heading_small slds-col">Chart</h3>
+                    <lightning-button-icon
+                        icon-name={chartToggleIcon}
+                        alternative-text={chartToggleLabel}
+                        variant="bare"
+                        size="small"
+                        onclick={handleToggleChart}>
+                    </lightning-button-icon>
+                </div>
+                <template lwc:if={chartVisible}>
+                    <div class="fm-chart" role="list" aria-label="Explorer results chart">
+                        <template for:each={chartRows} for:item="row">
+                            <div class="fm-chart__row" key={row.groupKey} role="listitem" aria-label={row.ariaLabel}>
+                                <div class="fm-chart__label" title={row.groupLabel}>{row.groupLabel}</div>
+                                <div class="fm-chart__bar-wrap">
+                                    <div class="fm-chart__bar" style={row.barStyle}></div>
+                                </div>
+                                <div class="fm-chart__value">
+                                    <span class="slds-text-title_bold">{row.metricValueDisplay}</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <div class="slds-m-top_large">
+                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">Detail</h3>
+                    <div class="fm-datatable" role="region" aria-label="Explorer results table">
+                        <!-- Hand-rolled table. lightning-datatable button
+                             cells proved unreliable for drill-in clicks
+                             across cache states; a plain <a> + onclick
+                             works everywhere. -->
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">
+                                        <span class="slds-truncate">Group</span>
+                                        <lightning-helptext content={groupColumnTooltip}></lightning-helptext>
+                                    </th>
+                                    <th scope="col" class="slds-text-align_right">{metricColumnLabel}</th>
+                                    <th scope="col" class="slds-text-align_right">Supporting</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={chartRows} for:item="row">
+                                    <tr key={row.groupKey}>
+                                        <td>
+                                            <template lwc:if={row.drillDisabled}>
+                                                <span class="slds-truncate">{row.groupLabel}</span>
+                                            </template>
+                                            <template lwc:if={row.drillEnabled}>
+                                                <a href="javascript:void(0)"
+                                                    class="fm-drill-link"
+                                                    data-group-key={row.groupKey}
+                                                    data-group-label={row.groupLabel}
+                                                    onclick={handleGroupClick}>{row.groupLabel}</a>
+                                            </template>
+                                        </td>
+                                        <td class="slds-text-align_right">{row.metricValueDisplay}</td>
+                                        <td class="slds-text-align_right">{row.supportingCount}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Entity drill-in modal — opened by handleGroupClick -->
+    <c-ai-insights-details-modal></c-ai-insights-details-modal>
+</template>

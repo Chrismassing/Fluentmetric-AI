@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>USD_Per_Call__c</fullName>
+    <description>DEPRECATED as of v1.5. USD is now derived as FC x Flex_Credit_USD_Rate__c (single source of truth), not from a per-model USD column. Salesforce bills per tier-per-invocation, so a per-model USD value is fabricated. Retained as nullable override escape hatch but not consulted by the primary cost path.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>USD Per Call</label>
+    <precision>10</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

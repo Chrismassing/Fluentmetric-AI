@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlexiPage xmlns="http://soap.sforce.com/2006/04/metadata">
+    <masterLabel>FluentMetric AI Dashboard</masterLabel>
+    <description>Main dashboard page for FluentMetric AI. Hosts the aiInsightsApp container.</description>
+    <type>AppPage</type>
+    <template>
+        <name>flexipage:defaultAppHomeTemplate</name>
+    </template>
+    <flexiPageRegions>
+        <name>main</name>
+        <type>Region</type>
+        <itemInstances>
+            <componentInstance>
+                <componentName>c:aiInsightsApp</componentName>
+                <identifier>aiInsightsApp</identifier>
+                <componentInstanceProperties>
+                    <name>defaultPresetDays</name>
+                    <value>30</value>
+                </componentInstanceProperties>
+            </componentInstance>
+        </itemInstances>
+    </flexiPageRegions>
+</FlexiPage>

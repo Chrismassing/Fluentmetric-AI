@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- ═══════════ App shell ═══════════ -->
+    <labels>
+        <fullName>FM_App_Title</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>FM App Title</shortDescription>
+        <value>FluentMetric AI</value>
+    </labels>
+    <labels>
+        <fullName>FM_App_Subtitle</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>FM App Subtitle</shortDescription>
+        <value>See who uses Einstein, how much it costs, and when outputs get flagged.</value>
+    </labels>
+
+    <!-- ═══════════ Overview sections ═══════════ -->
+    <labels>
+        <fullName>FM_Section_Highlights</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - Highlights section heading</shortDescription>
+        <value>Highlights</value>
+    </labels>
+    <labels>
+        <fullName>FM_Section_Key_Metrics</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - Key Metrics section heading</shortDescription>
+        <value>Key Metrics</value>
+    </labels>
+
+    <!-- ═══════════ Overview cost tooltips (shortened) ═══════════ -->
+    <labels>
+        <fullName>FM_Tip_EstCost_Short</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Short tooltip for Est. LLM Cost card</shortDescription>
+        <value>Estimated USD for LLM prompts only. See the Cost tab for full scope.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Tip_FlexCredits_Short</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Short tooltip for Flex Credits card</shortDescription>
+        <value>Agentforce Flex Credits consumed by LLM prompts. See the Cost tab for tier rates.</value>
+    </labels>
+
+    <!-- ═══════════ Cost tab copy ═══════════ -->
+    <labels>
+        <fullName>FM_Cost_Disabled_Lead</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Cost tab - disabled-state lead</shortDescription>
+        <value>Cost metrics are off. Enable to see estimated USD for LLM prompts across the app.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Enable_Button</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Cost tab - enable CTA</shortDescription>
+        <value>Enable cost metrics in Setup</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Enable_Helper</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Helper under enable CTA</shortDescription>
+        <value>Tick &quot;Enable Cost Metrics&quot; on FluentMetric_Cost_Settings__c. Until then every cost card shows $0.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Scope_Title</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Accordion label for scope details</shortDescription>
+        <value>What&apos;s included and excluded</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Rate_Card_Note</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Rate card footnote</shortDescription>
+        <value>Rate card effective 21 Apr 2026.</value>
+    </labels>
+
+    <!-- ═══════════ Empty states ═══════════ -->
+    <labels>
+        <fullName>FM_Empty_Overview_Title</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview empty state title</shortDescription>
+        <value>Nothing to show yet</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Overview_Message</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview empty state body</shortDescription>
+        <value>No Einstein Generative AI audit records in this range. Try a wider window or confirm Einstein features are in use.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Safety_Title</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Safety empty state title</shortDescription>
+        <value>No safety data for this range</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Safety_Message</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Safety empty state body</shortDescription>
+        <value>The content-safety classifier recorded no scoring for this window. Widen the range or confirm the classifier is enabled.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Tokens_Title</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Tokens empty state title</shortDescription>
+        <value>No token consumption to show</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Tokens_Message</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Tokens empty state body</shortDescription>
+        <value>No AI requests with token counts fall in this range. Widen the range or switch the Group by dimension.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Prompts_Title</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Prompts empty state title</shortDescription>
+        <value>No prompt activity in this range</value>
+    </labels>
+    <labels>
+        <fullName>FM_Empty_Prompts_Message</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Prompts empty state body</shortDescription>
+        <value>No prompt templates have been invoked. Widen the range to see historical activity.</value>
+    </labels>
+
+    <!-- ═══════════ Empty-state quick actions ═══════════ -->
+    <labels>
+        <fullName>FM_Action_Expand_90_Days</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Quick action - expand date range</shortDescription>
+        <value>Try last 90 days</value>
+    </labels>
+    <labels>
+        <fullName>FM_Action_Open_Explorer</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Quick action - open Explorer</shortDescription>
+        <value>Open Explorer</value>
+    </labels>
+
+    <!-- ═══════════ Explorer starter chips ═══════════ -->
+    <labels>
+        <fullName>FM_Explorer_Starter_Heading</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer - starter heading</shortDescription>
+        <value>Start with a common question</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Starter_Top_Prompts</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer - top prompts starter</shortDescription>
+        <value>Top 20 prompts by tokens</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Starter_Flagged_Last_Week</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer - flagged starter</shortDescription>
+        <value>Flagged outputs last 7 days</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Starter_Heavy_Users</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer - heavy users starter</shortDescription>
+        <value>Users above 100 requests</value>
+    </labels>
+</CustomLabels>

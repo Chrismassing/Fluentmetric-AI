@@ -1,0 +1,95 @@
+<template>
+    <template lwc:if={isOpen}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby={ariaLabelledById}
+            class="slds-modal slds-fade-in-open slds-modal_large"
+            onclick={handleModalClick}>
+            <div class="slds-modal__container">
+                <!-- Header -->
+                <header class="slds-modal__header fm-modal-header">
+                    <button
+                        type="button"
+                        class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse fm-modal-close-btn"
+                        aria-label="Close dialog"
+                        title="Close"
+                        onclick={handleClose}>
+                        <lightning-icon
+                            icon-name="utility:close"
+                            size="small"
+                            variant="inverse"
+                            alternative-text="Close">
+                        </lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 id="fm-text-modal-heading" class="slds-modal__title slds-hyphenate">
+                        {title}
+                    </h2>
+                </header>
+
+                <!-- Body -->
+                <div class="slds-modal__content slds-p-around_medium fm-modal-body">
+                    <template lwc:if={hasMetadata}>
+                        <div class="slds-grid slds-grid_vertical-align-center slds-wrap slds-m-bottom_small fm-metadata-row">
+                            <template for:each={metadataLines} for:item="line">
+                                <div key={line.key} class="slds-m-right_medium fm-metadata-item">
+                                    <span class="slds-text-title_caps slds-text-color_weak">{line.label}</span>
+                                    <span class="slds-m-left_xx-small slds-text-title_bold">{line.value}</span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <pre class="slds-textarea fm-modal-pre" aria-label={title}>{content}</pre>
+                </div>
+
+                <!-- Footer -->
+                <footer class="slds-modal__footer">
+                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-size_1-of-1">
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                            <lightning-button
+                                variant="neutral"
+                                label="Copy"
+                                icon-name="utility:copy_to_clipboard"
+                                title={tooltips.copy}
+                                onclick={handleCopy}>
+                            </lightning-button>
+                            <lightning-button
+                                class="slds-m-left_x-small"
+                                variant="neutral"
+                                label="Open in new tab"
+                                icon-name="utility:new_window"
+                                title={tooltips.openInNewWindow}
+                                onclick={handleOpenInNewWindow}>
+                            </lightning-button>
+                            <lightning-button
+                                class="slds-m-left_x-small"
+                                variant="neutral"
+                                label="Download"
+                                icon-name="utility:download"
+                                title="Download as an .html file — useful if the new-tab button is blocked by your browser's popup settings"
+                                onclick={handleDownloadHtml}>
+                            </lightning-button>
+                            <template lwc:if={hasCopyFeedback}>
+                                <span class={copyFeedbackClass} role="status">{copyFeedback}</span>
+                            </template>
+                        </div>
+                        <lightning-button
+                            variant="brand"
+                            label="Close"
+                            title={tooltips.close}
+                            onclick={handleClose}>
+                        </lightning-button>
+                    </div>
+                </footer>
+            </div>
+        </section>
+        <div
+            class="slds-backdrop slds-backdrop_open"
+            data-role="backdrop"
+            onclick={handleBackdropClick}>
+        </div>
+    </template>
+</template>

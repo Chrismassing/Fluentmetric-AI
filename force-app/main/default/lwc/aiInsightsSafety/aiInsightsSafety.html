@@ -1,0 +1,246 @@
+<template>
+    <lightning-card title="Content Safety" icon-name="standard:service_contract">
+        <template lwc:if={totalGenerationsDisplay}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">
+                {totalGenerationsDisplay} generations inspected
+            </span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={isLoading}>
+                <div class="fm-spinner-wrap" role="status">
+                    <lightning-spinner alternative-text="Loading safety overview" size="medium" variant="brand"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:if={showEmptyState}>
+                <c-ai-insights-empty-state
+                    title={labels.emptyTitle}
+                    message={labels.emptyMessage}
+                    icon-name="standard:service_contract"
+                    primary-action-label={labels.expandRange}
+                    onprimaryaction={handleExpandRange}>
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showContent}>
+                <!-- ───── Summary ─────────────────────────────────────── -->
+                <section class="slds-m-bottom_medium" aria-label="Flagged rate summary">
+                    <div class={toxicRateCardClass}>
+                        <p class="fm-card__label">
+                            <span>Flagged Rate</span>
+                            <lightning-helptext content={tooltips.toxicRate}></lightning-helptext>
+                        </p>
+                        <p class="fm-card__value">{toxicRateDisplay}</p>
+                        <p class="fm-card__tone">
+                            <lightning-icon icon-name={toxicRateIcon} size="xx-small" alternative-text=""></lightning-icon>
+                            <span class="slds-m-left_xx-small">{toxicRateToneLabel}</span>
+                            <span class="slds-m-left_small slds-text-color_weak">{flaggedCountDisplay}</span>
+                            <lightning-helptext content={tooltips.totalGenerations} class="slds-m-left_xx-small"></lightning-helptext>
+                        </p>
+                    </div>
+                </section>
+
+                <!-- ───── Daily flag cadence ──────────────────────────
+                     Simple per-day column strip: one cell per day in the
+                     selected window, intensity-keyed to flag count. Makes
+                     spikes visible without requiring a full category×day
+                     heatmap (blocked for v1 because category scores are
+                     stored as JSON strings on the DMO). -->
+                <template lwc:if={hasDailyFlagColumns}>
+                    <section class="slds-m-bottom_medium" aria-label="Daily flagged-output cadence">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                            <h3 class="slds-text-heading_small">Flagged-output cadence</h3>
+                            <lightning-helptext content="One cell per day in the selected window. Darker = more flagged outputs that day. Hover a cell to see the exact count." class="slds-m-left_xx-small"></lightning-helptext>
+                        </div>
+                        <div class="fm-flag-strip" role="img" aria-label="Daily flagged-output heatmap">
+                            <template for:each={dailyFlagColumns} for:item="col">
+                                <div class={col.className} key={col.key} title={col.title}></div>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+
+                <!-- ───── Category breakdown ──────────────────────────── -->
+                <section class="slds-m-bottom_medium" aria-label="Category breakdown">
+                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                        <h3 class="slds-text-heading_small">Category Breakdown</h3>
+                        <lightning-helptext content={tooltips.categoryScore} class="slds-m-left_xx-small"></lightning-helptext>
+                    </div>
+
+                    <template lwc:if={hasCategoryData}>
+                        <div class="fm-category-grid" role="list">
+                            <template for:each={categoryRows} for:item="cat">
+                                <div class={cat.rowClass} key={cat.name} role="listitem">
+                                    <div class="fm-category-row__label">
+                                        <span class="slds-text-title_caps slds-text-color_weak">{cat.name}</span>
+                                    </div>
+                                    <div class="fm-category-row__bar">
+                                        <lightning-progress-bar
+                                            value={cat.scorePct}
+                                            variant={cat.variant}
+                                            size="medium">
+                                        </lightning-progress-bar>
+                                    </div>
+                                    <div class="fm-category-row__score">
+                                        <span class="slds-text-title_bold">{cat.scoreDisplay}</span>
+                                    </div>
+                                    <div class="fm-category-row__flagged">
+                                        <span class="slds-text-body_small slds-text-color_weak">
+                                            <lightning-helptext content={tooltips.flaggedCount}></lightning-helptext>
+                                            <span class="slds-m-left_xx-small">{cat.flaggedCount} flagged</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasNoCategoryData}>
+                        <!-- v1 limitation: avgCategoryScores is empty because the DMO encodes
+                             category scores as a JSON string. Render an explainer instead of
+                             silently showing an empty grid. -->
+                        <div class="slds-box slds-theme_shade slds-text-body_small slds-text-color_weak" role="status">
+                            <p>
+                                Category breakdown not available in this view — see the Safety category DMO directly for detailed scoring.
+                            </p>
+                        </div>
+                    </template>
+                </section>
+
+                <!-- ───── Recent flagged outputs ──────────────────────── -->
+                <section aria-label="Recent flagged outputs">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Recent Flagged Outputs</h3>
+
+                    <template lwc:if={hasFlaggedOutputs}>
+                        <lightning-accordion
+                            allow-multiple-sections-open
+                            active-section-name={activeSections}
+                            onsectiontoggle={handleAccordionToggle}>
+                            <template for:each={flaggedOutputs} for:item="row">
+                                <lightning-accordion-section
+                                    key={row.sectionName}
+                                    name={row.sectionName}
+                                    label={row.sectionLabel}>
+                                    <div class="fm-output-card">
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-wrap slds-m-bottom_small">
+                                            <div class="fm-output-field slds-m-right_medium">
+                                                <span class="fm-output-label">
+                                                    User
+                                                    <lightning-helptext content={outputTooltips.userName}></lightning-helptext>
+                                                </span>
+                                                <template lwc:if={row.userId}>
+                                                    <lightning-button
+                                                        label={row.userName}
+                                                        variant="base"
+                                                        title="Click to see this user's recent requests"
+                                                        data-user-id={row.userId}
+                                                        data-user-name={row.userName}
+                                                        onclick={handleDrillToUser}>
+                                                    </lightning-button>
+                                                </template>
+                                                <template lwc:if={row.userIdMissing}>
+                                                    <span class="fm-output-value">{row.userName}</span>
+                                                </template>
+                                            </div>
+                                            <div class="fm-output-field slds-m-right_medium">
+                                                <span class="fm-output-label">
+                                                    Date
+                                                    <lightning-helptext content={outputTooltips.requestDate}></lightning-helptext>
+                                                </span>
+                                                <span class="fm-output-value">
+                                                    <lightning-formatted-date-time
+                                                        value={row.requestDate}
+                                                        year="numeric"
+                                                        month="short"
+                                                        day="2-digit"
+                                                        hour="2-digit"
+                                                        minute="2-digit">
+                                                    </lightning-formatted-date-time>
+                                                </span>
+                                            </div>
+                                            <div class="fm-output-field slds-m-right_medium">
+                                                <span class="fm-output-label">
+                                                    Model
+                                                    <lightning-helptext content={outputTooltips.model}></lightning-helptext>
+                                                </span>
+                                                <span class="fm-output-value">{row.modelDisplay}</span>
+                                            </div>
+                                            <div class="fm-output-field">
+                                                <span class="fm-output-label">
+                                                    Safety
+                                                    <lightning-helptext content={outputTooltips.isToxic}></lightning-helptext>
+                                                </span>
+                                                <span class="fm-badge fm-badge_error">
+                                                    <lightning-icon icon-name="utility:warning" size="xx-small" alternative-text="Flagged" variant="error"></lightning-icon>
+                                                    <span class="slds-m-left_xx-small">Flagged</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="fm-output-field slds-m-bottom_small">
+                                            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                                <span class="fm-output-label">
+                                                    Input prompt
+                                                    <lightning-helptext content={outputTooltips.inputPrompt}></lightning-helptext>
+                                                </span>
+                                                <lightning-button
+                                                    label="Show full"
+                                                    variant="base"
+                                                    icon-name="utility:expand_alt"
+                                                    icon-position="left"
+                                                    data-request-id={row.requestId}
+                                                    onclick={handleExpandInput}>
+                                                </lightning-button>
+                                            </div>
+                                            <!-- Truncated preview only — full text lives in the Expand modal
+                                                 so a long prompt doesn't dominate the safety review pass. -->
+                                            <pre class="fm-output-text fm-output-text_preview">{row.inputPromptCollapsed}</pre>
+                                        </div>
+
+                                        <div class="fm-output-field slds-m-bottom_small">
+                                            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                                <span class="fm-output-label">
+                                                    Generated output
+                                                    <lightning-helptext content={outputTooltips.generatedText}></lightning-helptext>
+                                                </span>
+                                                <lightning-button
+                                                    label="Show full"
+                                                    variant="base"
+                                                    icon-name="utility:expand_alt"
+                                                    icon-position="left"
+                                                    data-request-id={row.requestId}
+                                                    onclick={handleExpandOutput}>
+                                                </lightning-button>
+                                            </div>
+                                            <pre class="fm-output-text fm-output-text_preview">{row.generatedTextCollapsed}</pre>
+                                        </div>
+                                    </div>
+                                </lightning-accordion-section>
+                            </template>
+                        </lightning-accordion>
+                    </template>
+
+                    <template lwc:if={hasNoFlaggedOutputs}>
+                        <div class="slds-box slds-theme_shade slds-text-body_small slds-text-color_weak" role="status">
+                            <p>No flagged outputs in the selected range — nothing to review.</p>
+                        </div>
+                    </template>
+                </section>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Expand modal — opened imperatively by handleExpandInput / handleExpandOutput -->
+    <c-ai-insights-text-modal></c-ai-insights-text-modal>
+
+    <!-- Entity drill-in modal — opened by handleDrillToUser -->
+    <c-ai-insights-details-modal></c-ai-insights-details-modal>
+</template>

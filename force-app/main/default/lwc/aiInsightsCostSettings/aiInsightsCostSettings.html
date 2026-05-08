@@ -1,0 +1,200 @@
+<template>
+    <lightning-card title="Cost Settings" icon-name="utility:money">
+        <lightning-button
+            slot="actions"
+            label="Save in Setup"
+            icon-name="utility:new_window"
+            icon-position="right"
+            variant="neutral"
+            title="Opens the standard Salesforce custom setting editor in a new tab so admins can persist changes to Flex_Credit_USD_Rate__c / Discount_Percent__c / Default_Fallback_Model__c."
+            onclick={handleOpenSetup}>
+        </lightning-button>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{settingsError}</span>
+                </div>
+            </template>
+
+            <!-- ───── Disabled-state: concise lead + primary CTA + collapsed scope ───── -->
+            <template lwc:if={showDisabledNotice}>
+                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
+                    <lightning-icon icon-name="utility:info" size="small" alternative-text="Cost metrics are off" class="slds-m-right_small"></lightning-icon>
+                    <p class="slds-text-body_regular">{labels.disabledLead}</p>
+                </div>
+
+                <div class="slds-m-bottom_medium">
+                    <lightning-button
+                        label={labels.enableButton}
+                        variant="brand"
+                        icon-name="utility:new_window"
+                        icon-position="right"
+                        title="Opens the hierarchy custom setting editor. Tick 'Enable Cost Metrics' and Save to surface cost analytics across the app."
+                        onclick={handleOpenSetup}>
+                    </lightning-button>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                        {labels.enableHelper}
+                    </p>
+                </div>
+
+                <!-- Scope lives inside a collapsed accordion so the disabled-state
+                     page lead with a one-line summary and primary CTA — not a wall
+                     of compliance copy. Users who want the detail click to expand. -->
+                <lightning-accordion class="slds-m-bottom_medium">
+                    <lightning-accordion-section name="scope" label={labels.scopeTitle}>
+                        <ul class="slds-list_dotted slds-text-body_small slds-p-left_medium">
+                            <li>
+                                <strong>Included:</strong> metered Agentforce Flex Credits for LLM prompts, priced per tier
+                                (Basic 2 FC, Standard 4 FC, Advanced 16 FC) from the shipped rate card.
+                            </li>
+                            <li>
+                                <strong>Excluded:</strong> Data Cloud / Data 360 retrieval charges, fine-tuning,
+                                token-overage charges, unmetered Salesforce-internal classifiers
+                                (e.g. EinsteinHyperClassifier, EinsteinTextEval) and action invocations that are
+                                billed separately.
+                            </li>
+                            <li>
+                                <strong>USD conversion:</strong> defaults to $0.004 per Flex Credit (public rate,
+                                effective 21 April 2026). Override the USD rate and any contracted discount via
+                                the hierarchy custom setting.
+                            </li>
+                            <li>
+                                <strong>Unknown models:</strong> fall back to the Standard tier (4 FC / $0.016
+                                per call). Tooltips flag rows that used fallback pricing.
+                            </li>
+                        </ul>
+                        <p class="slds-text-body_small slds-m-top_small slds-text-color_weak slds-p-left_medium">
+                            Authoritative source:
+                            <a href="https://www.salesforce.com/en-us/wp-content/uploads/sites/4/assets/pdf/agentforce/Flex-Credits-Rate-Card-04.21.2026.pdf" target="_blank" rel="noopener noreferrer">
+                                Salesforce Flex Credits Rate Card (21 Apr 2026)
+                            </a>
+                            ·
+                            <a href="https://help.salesforce.com/s/articleView?id=ai.generative_ai_large_language_model_support.htm" target="_blank" rel="noopener noreferrer">
+                                Supported Large Language Models
+                            </a>
+                        </p>
+                    </lightning-accordion-section>
+                </lightning-accordion>
+            </template>
+
+            <template lwc:if={showEnabledSettings}>
+                <!-- Enabled state: compact helptext instead of a banner. Full scope
+                     lives in the shared accordion below so the page leads with data,
+                     not disclaimer copy. -->
+
+                <!-- ───── Saved settings (read-only) ───── -->
+                <section aria-label="Saved settings" class="slds-m-bottom_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">
+                        Saved settings
+                        <lightning-helptext content={labels.rateCardNote} class="slds-m-left_xx-small"></lightning-helptext>
+                    </h3>
+                    <div class="slds-grid slds-wrap slds-gutters_small">
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <div class="fm-setting-tile">
+                                <p class="fm-setting-tile__label">
+                                    USD per Flex Credit
+                                    <lightning-helptext content="Dollar cost per Agentforce Flex Credit. Sourced from the hierarchy custom setting FluentMetric_Cost_Settings__c.Flex_Credit_USD_Rate__c. Default $0.004 matches public Agentforce pricing."></lightning-helptext>
+                                </p>
+                                <p class="fm-setting-tile__value">{savedUsdPerCreditDisplay}</p>
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <div class="fm-setting-tile">
+                                <p class="fm-setting-tile__label">
+                                    Discount
+                                    <lightning-helptext content="Percentage discount applied to the base USD cost. Sourced from FluentMetric_Cost_Settings__c.Discount_Percent__c. 0 = no discount."></lightning-helptext>
+                                </p>
+                                <p class="fm-setting-tile__value">{savedDiscountDisplay}</p>
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <div class="fm-setting-tile">
+                                <p class="fm-setting-tile__label">
+                                    Fallback model
+                                    <lightning-helptext content="Rate-card record to use when a DMO request's model is not in FluentMetric_Rate_Card__mdt. Defaults to Standard-Default ($0.016/call, 4 FC)."></lightning-helptext>
+                                </p>
+                                <p class="fm-setting-tile__value">{savedFallbackModel}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ───── Live-preview sliders ───── -->
+                <section aria-label="Preview mode" class="slds-box slds-theme_shade">
+                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                        <h3 class="slds-text-heading_small">
+                            Preview mode
+                            <lightning-helptext content="Slide to see how a different USD/credit rate or discount would affect the current range's total cost. Moving the sliders does NOT save — click 'Save in Setup' to persist."></lightning-helptext>
+                        </h3>
+                        <template lwc:if={isInPreviewMode}>
+                            <lightning-badge label="Preview mode" variant="warning"></lightning-badge>
+                        </template>
+                    </div>
+
+                    <div class="slds-grid slds-wrap slds-gutters_small">
+                        <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
+                            <lightning-slider
+                                label="USD per Flex Credit"
+                                min="0.001"
+                                max="0.02"
+                                step="0.001"
+                                value={previewUsdPerCredit}
+                                onchange={handleUsdRateChange}>
+                            </lightning-slider>
+                            <p class="slds-text-body_small slds-m-top_xx-small">
+                                Current: <strong>{previewUsdPerCreditDisplay}</strong>
+                            </p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
+                            <lightning-slider
+                                label="Discount %"
+                                min="0"
+                                max="100"
+                                step="5"
+                                value={previewDiscountPercent}
+                                onchange={handleDiscountChange}>
+                            </lightning-slider>
+                            <p class="slds-text-body_small slds-m-top_xx-small">
+                                Current: <strong>{previewDiscountDisplay}</strong>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Live preview totals -->
+                    <div class="slds-m-top_medium slds-grid slds-wrap slds-gutters_small">
+                        <div class="slds-col slds-size_1-of-3">
+                            <p class="slds-text-title_caps slds-text-color_weak">Range Flex Credits</p>
+                            <p class="slds-text-heading_medium">{rangeFlexCreditsDisplay}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3">
+                            <p class="slds-text-title_caps slds-text-color_weak">Saved cost</p>
+                            <p class="slds-text-heading_medium">{savedCostDisplay}</p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3">
+                            <p class="slds-text-title_caps slds-text-color_weak">Preview cost</p>
+                            <p class="slds-text-heading_medium fm-preview-cost">{previewCostDisplay}</p>
+                            <template lwc:if={isInPreviewMode}>
+                                <p class="slds-text-body_small slds-text-color_weak">
+                                    Delta from saved: <strong>{deltaDisplay}</strong>
+                                </p>
+                            </template>
+                        </div>
+                    </div>
+
+                    <template lwc:if={isInPreviewMode}>
+                        <div class="slds-m-top_medium">
+                            <lightning-button
+                                label="Reset preview"
+                                variant="base"
+                                icon-name="utility:undo"
+                                onclick={handleResetPreview}>
+                            </lightning-button>
+                        </div>
+                    </template>
+                </section>
+            </template>
+        </div>
+    </lightning-card>
+</template>

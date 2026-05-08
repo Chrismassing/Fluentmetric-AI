@@ -1,0 +1,271 @@
+<template>
+    <div class={railClass} role="complementary" aria-label="Dashboard filters">
+
+        <!-- ── Expanded state header ── -->
+        <template lwc:if={expanded}>
+            <div class="slds-filters__header slds-grid slds-grid_vertical-align-center slds-grid_align-spread slds-p-around_x-small">
+                <div class="slds-grid slds-grid_vertical-align-center">
+                    <h2 class="slds-align-middle slds-text-heading_small">Filters</h2>
+                    <template lwc:if={hasAnyFilter}>
+                        <button
+                            type="button"
+                            class="slds-button slds-button_reset slds-text-link slds-m-left_small"
+                            onclick={handleClearAll}>
+                            Clear all
+                        </button>
+                    </template>
+                </div>
+                <button
+                    type="button"
+                    class="slds-button slds-button_icon slds-button_icon-border fm-filter-rail__toggle"
+                    title={toggleAltText}
+                    aria-label={toggleAltText}
+                    onclick={handleToggleRail}>
+                    <lightning-icon icon-name={toggleIcon} size="xx-small"></lightning-icon>
+                    <span class="slds-assistive-text">{toggleAltText}</span>
+                </button>
+            </div>
+        </template>
+
+        <!-- ── Collapsed state strip ── -->
+        <template lwc:else>
+            <button
+                type="button"
+                class="slds-button slds-button_reset fm-filter-rail__collapsed-btn"
+                aria-label={toggleAltText}
+                onclick={handleToggleRail}>
+                <lightning-icon icon-name="utility:filterList" size="small"></lightning-icon>
+                <template lwc:if={hasActiveFilters}>
+                    <span
+                        class="slds-badge slds-badge_inverse fm-filter-rail__count"
+                        aria-label={activeFilterCountAriaLabel}>
+                        {activeFilterCount}
+                    </span>
+                </template>
+                <span class="fm-filter-rail__collapsed-label">Filters</span>
+            </button>
+        </template>
+
+        <!-- ── Section content (expanded rail only) ── -->
+        <template lwc:if={expanded}>
+
+        <!-- ──────────── Date section ──────────── -->
+        <div class={sectionDateClass}>
+            <button
+                type="button"
+                class="fm-section__title slds-button slds-button_reset"
+                data-section="date"
+                aria-expanded={sectionDateExpanded}
+                onclick={handleToggleSection}>
+                <span class="slds-text-title_caps">Date</span>
+                <span class="fm-section__chevron">
+                    <lightning-icon icon-name="utility:chevrondown" size="xx-small"></lightning-icon>
+                </span>
+            </button>
+            <div class="fm-section__body">
+                <lightning-combobox
+                    label="Range preset"
+                    value={preset}
+                    options={presetOptions}
+                    onchange={handlePresetChange}>
+                </lightning-combobox>
+                <template lwc:if={isCustomRange}>
+                    <div class="slds-m-top_x-small">
+                        <lightning-input
+                            type="date"
+                            label="Start date"
+                            value={customStart}
+                            onchange={handleCustomStartChange}>
+                        </lightning-input>
+                        <lightning-input
+                            type="date"
+                            label="End date"
+                            value={customEnd}
+                            onchange={handleCustomEndChange}>
+                        </lightning-input>
+                    </div>
+                </template>
+                <template lwc:if={dateError}>
+                    <p class="slds-text-color_error slds-m-top_x-small">{dateError}</p>
+                </template>
+            </div>
+        </div>
+
+        <!-- ──────────── Who section ──────────── -->
+        <div class={sectionWhoClass}>
+            <button
+                type="button"
+                class="fm-section__title slds-button slds-button_reset"
+                data-section="who"
+                aria-expanded={sectionWhoExpanded}
+                onclick={handleToggleSection}>
+                <span class="slds-text-title_caps">Who</span>
+                <span class="fm-section__chevron">
+                    <lightning-icon icon-name="utility:chevrondown" size="xx-small"></lightning-icon>
+                </span>
+            </button>
+            <div class="fm-section__body">
+                <!-- User typeahead -->
+                <div class="slds-form-element slds-m-bottom_small">
+                    <label class="slds-form-element__label" for="user-search-input">User (type to search)</label>
+                    <div class="slds-form-element__control">
+                        <input
+                            id="user-search-input"
+                            type="text"
+                            class="slds-input"
+                            placeholder="Start typing a name..."
+                            value={userQuery}
+                            oninput={handleUserQueryChange} />
+                    </div>
+                    <template lwc:if={userSearchLoading}>
+                        <div class="slds-m-top_xx-small slds-text-body_small slds-text-color_weak">Searching…</div>
+                    </template>
+                    <template lwc:if={hasUserSearchResults}>
+                        <ul class="slds-listbox slds-listbox_vertical fm-user-results slds-m-top_xx-small" role="listbox">
+                            <template for:each={userSearchResultsForRender} for:item="r">
+                                <li key={r.userId} role="presentation" class="slds-listbox__item">
+                                    <a
+                                        href="javascript:void(0)"
+                                        class="slds-listbox__option slds-listbox__option_plain slds-media"
+                                        data-user-id={r.userId}
+                                        data-user-label={r.label}
+                                        onclick={handleUserSearchPick}>
+                                        <span class="slds-media__body">
+                                            <span class="slds-listbox__option-text slds-truncate">{r.label}</span>
+                                            <span class="slds-listbox__option-meta slds-text-body_small slds-text-color_weak">{r.detail}</span>
+                                        </span>
+                                    </a>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                </div>
+
+                <!-- Selected user pills -->
+                <template lwc:if={hasSelectedUserPills}>
+                    <div class="slds-m-bottom_x-small" role="list" aria-label="Selected users">
+                        <template for:each={selectedUserPills} for:item="p">
+                            <lightning-pill
+                                key={p.value}
+                                label={p.label}
+                                data-user-id={p.value}
+                                onremove={handleRemoveUserPill}
+                                class="slds-m-right_x-small slds-m-bottom_x-small">
+                            </lightning-pill>
+                        </template>
+                        <button
+                            type="button"
+                            class="slds-button slds-button_reset slds-text-link slds-text-body_small"
+                            data-dim="user"
+                            onclick={handleClearDimension}>
+                            Clear users
+                        </button>
+                    </div>
+                </template>
+
+                <!-- Top users quick-pick -->
+                <template lwc:if={hasTopUserOptions}>
+                    <lightning-dual-listbox
+                        label="Top users in range"
+                        source-label="Available"
+                        selected-label="Selected"
+                        data-dim="topUser"
+                        options={topUserOptions}
+                        value={selectedUserIds}
+                        onchange={handleMultiChange}
+                        size="5">
+                    </lightning-dual-listbox>
+                </template>
+
+                <!-- Prompt template multi-select -->
+                <template lwc:if={hasPromptTemplateOptions}>
+                    <div class="slds-m-top_small">
+                        <lightning-dual-listbox
+                            label="Prompt template"
+                            source-label="Available"
+                            selected-label="Selected"
+                            data-dim="promptTemplate"
+                            options={promptTemplateOptions}
+                            value={selectedPromptTemplateDevNames}
+                            onchange={handleMultiChange}
+                            size="5">
+                        </lightning-dual-listbox>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ──────────── What section ──────────── -->
+        <div class={sectionWhatClass}>
+            <button
+                type="button"
+                class="fm-section__title slds-button slds-button_reset"
+                data-section="what"
+                aria-expanded={sectionWhatExpanded}
+                onclick={handleToggleSection}>
+                <span class="slds-text-title_caps">What</span>
+                <span class="fm-section__chevron">
+                    <lightning-icon icon-name="utility:chevrondown" size="xx-small"></lightning-icon>
+                </span>
+            </button>
+            <div class="fm-section__body">
+                <template lwc:if={hasModelOptions}>
+                    <lightning-dual-listbox
+                        label="Model"
+                        source-label="Available"
+                        selected-label="Selected"
+                        data-dim="model"
+                        options={modelOptions}
+                        value={selectedModels}
+                        onchange={handleMultiChange}
+                        size="5">
+                    </lightning-dual-listbox>
+                </template>
+                <template lwc:if={hasProviderOptions}>
+                    <div class="slds-m-top_small">
+                        <lightning-dual-listbox
+                            label="Provider"
+                            source-label="Available"
+                            selected-label="Selected"
+                            data-dim="provider"
+                            options={providerOptions}
+                            value={selectedProviders}
+                            onchange={handleMultiChange}
+                            size="4">
+                        </lightning-dual-listbox>
+                    </div>
+                </template>
+                <template lwc:if={hasFeatureOptions}>
+                    <div class="slds-m-top_small">
+                        <lightning-dual-listbox
+                            label="Feature"
+                            source-label="Available"
+                            selected-label="Selected"
+                            data-dim="feature"
+                            options={featureOptions}
+                            value={selectedFeatures}
+                            onchange={handleMultiChange}
+                            size="5">
+                        </lightning-dual-listbox>
+                    </div>
+                </template>
+                <template lwc:if={hasAppTypeOptions}>
+                    <div class="slds-m-top_small">
+                        <lightning-dual-listbox
+                            label="App type"
+                            source-label="Available"
+                            selected-label="Selected"
+                            data-dim="appType"
+                            options={appTypeOptions}
+                            value={selectedAppTypes}
+                            onchange={handleMultiChange}
+                            size="4">
+                        </lightning-dual-listbox>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        </template>
+    </div>
+</template>

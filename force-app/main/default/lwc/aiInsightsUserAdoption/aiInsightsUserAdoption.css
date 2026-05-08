@@ -1,0 +1,21 @@
+/*
+ * Scoped styles for the user adoption table. Uses SLDS design tokens so
+ * SLDS 2 / dark-mode theming applies automatically.
+ */
+
+.fm-spinner-wrap {
+    position: relative;
+    min-height: 6rem;
+}
+
+/* Horizontal scroll wrapper so the 9-column table stays usable on narrow
+   viewports without breaking keyboard nav inside lightning-datatable. */
+.fm-datatable {
+    overflow-x: auto;
+}
+
+/* Warning/amber text color that is not in the default SLDS utility classes.
+   Kept here so the feedbackRatio cell class can reference it directly. */
+.fm-text_warning {
+    color: var(--slds-g-color-warning-base-30, #8c4b02);
+}

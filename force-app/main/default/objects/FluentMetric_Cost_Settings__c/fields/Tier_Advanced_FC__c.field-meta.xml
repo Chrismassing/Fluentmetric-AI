@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tier_Advanced_FC__c</fullName>
+    <defaultValue>16</defaultValue>
+    <description>Flex Credits charged per Advanced-tier prompt invocation. Matches Salesforce public rate (16 FC).</description>
+    <externalId>false</externalId>
+    <label>Tier Advanced FC</label>
+    <precision>6</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

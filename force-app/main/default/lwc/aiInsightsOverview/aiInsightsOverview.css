@@ -1,0 +1,267 @@
+/*
+ * KPI card styling. Uses SLDS design tokens so dark-mode/SLDS 2 theming
+ * applies without additional work. Color is always paired with an icon +
+ * textual tone label in the template.
+ */
+
+.fm-card {
+    position: relative;
+    min-height: 7rem;
+    padding: var(--slds-g-spacing-3, 1rem);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    background-color: var(--slds-g-color-surface-container-1, #fff);
+    box-shadow: var(--slds-g-shadow-1, 0 2px 2px 0 rgba(0, 0, 0, 0.05));
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.fm-card__label {
+    font-size: var(--slds-g-font-size-1, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.0625rem;
+    color: var(--slds-g-color-neutral-base-30, #444);
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.fm-card__value {
+    font-size: var(--slds-g-font-size-6, 1.75rem);
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--slds-g-color-neutral-base-10, #181818);
+    margin: 0;
+}
+
+.fm-card__tone {
+    font-size: var(--slds-g-font-size-1, 0.75rem);
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+}
+
+.fm-card__spinner {
+    position: relative;
+    min-height: 2.5rem;
+}
+
+/* Theme variants — border-left accent + matching tone-label color.
+   Background stays neutral so the number stays readable. */
+
+.fm-card_success {
+    border-left: 0.25rem solid var(--slds-g-color-success-base-50, #2e844a);
+}
+.fm-card_success .fm-card__tone {
+    color: var(--slds-g-color-success-base-40, #194e31);
+}
+
+.fm-card_warning {
+    border-left: 0.25rem solid var(--slds-g-color-warning-base-50, #fe9339);
+}
+.fm-card_warning .fm-card__tone {
+    color: var(--slds-g-color-warning-base-30, #8c4b02);
+}
+
+.fm-card_error {
+    border-left: 0.25rem solid var(--slds-g-color-error-base-50, #ba0517);
+}
+.fm-card_error .fm-card__tone {
+    color: var(--slds-g-color-error-base-40, #8e030f);
+}
+
+.fm-card_neutral {
+    border-left: 0.25rem solid var(--slds-g-color-border-base-1, #c9c9c9);
+}
+
+/* Primary KPI — visually heavier than secondary tiles so the eye lands on
+   "Total Requests" and "Unique Users" first. Uses brand accent + larger
+   value font; color always paired with text. */
+.fm-card_primary {
+    position: relative;
+    min-height: 8.5rem;
+    padding: var(--slds-g-spacing-3, 1rem) var(--slds-g-spacing-4, 1.25rem);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-left: 0.25rem solid var(--slds-g-color-brand-base-50, #0176d3);
+    background-color: var(--slds-g-color-surface-container-1, #fff);
+    box-shadow: var(--slds-g-shadow-2, 0 2px 6px 0 rgba(0, 0, 0, 0.08));
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+.fm-card_primary .fm-card__value {
+    font-size: var(--slds-g-font-size-8, 2.25rem);
+    font-weight: 700;
+    line-height: 1.1;
+}
+.fm-card_primary .fm-card__label {
+    color: var(--slds-g-color-brand-base-40, #014486);
+}
+
+/* Primary-card value row: lets the big number sit next to an inline
+   sparkline. Sparklines wrap to a new line on narrow cards. */
+.fm-card__value-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ───────── Sparkline (inline SVG polyline) ───────── */
+/* Compact trend line. Stroke uses SLDS brand tokens so light/dark theming
+   applies for free. Kept visually subordinate to the headline number. */
+.fm-sparkline {
+    width: 5rem;
+    height: 1.5rem;
+    color: var(--slds-g-color-brand-base-50, #0176d3);
+}
+.fm-sparkline polyline {
+    stroke: currentColor;
+    fill: none;
+}
+/* Full-width under-number variant for secondary cards where the value is
+   the whole row. */
+.fm-sparkline_inline {
+    width: 100%;
+    height: 1.25rem;
+    margin-top: 0.25rem;
+    opacity: 0.7;
+}
+.fm-sparkline_danger {
+    color: var(--slds-g-color-error-base-50, #ba0517);
+}
+
+/* ───────── Period-over-period delta badge ───────── */
+/* Always pairs color with an up/down icon + text — never color-alone. */
+.fm-delta {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--slds-g-font-size-1, 0.75rem);
+    line-height: 1;
+    margin: 0;
+}
+.fm-delta_up {
+    color: var(--slds-g-color-success-base-40, #194e31);
+}
+.fm-delta_down {
+    color: var(--slds-g-color-error-base-40, #8e030f);
+}
+
+/* ───────── Highlight cards ───────── */
+.fm-highlight-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: var(--slds-g-color-surface-1, #fff);
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    border-radius: 0.5rem;
+    height: 100%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 150ms ease;
+}
+.fm-highlight-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.fm-highlight-card__icon {
+    flex: 0 0 auto;
+    padding-top: 0.125rem;
+}
+.fm-highlight-card__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.fm-highlight-card__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03125rem;
+    color: var(--slds-g-color-neutral-base-30, #747474);
+    margin: 0 0 0.125rem 0;
+}
+.fm-highlight-card__value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--slds-g-color-neutral-base-10, #181818);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0 0 0.125rem 0;
+}
+.fm-highlight-card__meta {
+    font-size: 0.8125rem;
+    color: var(--slds-g-color-neutral-base-30, #747474);
+    margin: 0;
+}
+
+/* Category-specific left accents keep the four highlights visually distinct */
+.fm-highlight-card_user {
+    border-left: 0.25rem solid var(--slds-g-color-brand-base-50, #0176d3);
+}
+.fm-highlight-card_prompt {
+    border-left: 0.25rem solid var(--slds-g-color-brand-base-40, #014486);
+}
+.fm-highlight-card_model {
+    border-left: 0.25rem solid #8c5df0;
+}
+.fm-highlight-card_feature {
+    border-left: 0.25rem solid var(--slds-g-color-success-base-50, #2e844a);
+}
+
+/* ──────── Top contributors leaderboard ──────── */
+
+.fm-top-contributors {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-row-gap: 0.5rem;
+}
+
+.fm-top-contributors__row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 22%) 1fr auto auto;
+    align-items: center;
+    column-gap: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.fm-top-contributors__row:hover {
+    background-color: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.fm-top-contributors__name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fm-top-contributors__bar {
+    display: block;
+    height: 0.5rem;
+    background-color: var(--slds-g-color-neutral-base-90, #e5e5e5);
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.fm-top-contributors__bar-fill {
+    display: block;
+    height: 100%;
+    background-color: var(--slds-g-color-brand-base-50, #0176d3);
+    border-radius: 0.25rem;
+}
+
+.fm-top-contributors__primary {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.fm-top-contributors__secondary {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}

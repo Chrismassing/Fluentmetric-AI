@@ -1,0 +1,182 @@
+<template>
+    <template lwc:if={showComponent}>
+        <lightning-card title={cardTitle} icon-name="standard:document_reference">
+            <template lwc:if={resultSummary}>
+                <span slot="actions" class="slds-text-body_small slds-text-color_weak">{resultSummary}</span>
+            </template>
+
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Inspect the full input and generated text for up to 20 recent requests. Use the arrows to expand each card.
+                </p>
+
+                <template lwc:if={showError}>
+                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                        <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                        <span class="slds-m-left_x-small">{errorMessage}</span>
+                    </div>
+                </template>
+
+                <template lwc:if={isLoading}>
+                    <div class="fm-spinner-wrap" role="status">
+                        <lightning-spinner alternative-text="Loading outputs" size="medium" variant="brand"></lightning-spinner>
+                    </div>
+                </template>
+
+                <template lwc:if={showEmptyState}>
+                    <c-ai-insights-empty-state
+                        title="No outputs for this prompt"
+                        message="This prompt template has no recorded outputs in the selected date range. Try expanding the range or pick a different prompt."
+                        icon-name="standard:document_reference">
+                    </c-ai-insights-empty-state>
+                </template>
+
+                <template lwc:if={showList}>
+                    <lightning-accordion
+                        allow-multiple-sections-open
+                        active-section-name={activeSections}
+                        onsectiontoggle={handleAccordionToggle}>
+                        <template for:each={visibleRows} for:item="row">
+                            <lightning-accordion-section
+                                key={row.sectionName}
+                                name={row.sectionName}
+                                label={row.userName}>
+                                <div class="fm-output-card">
+                                    <!-- Header row: user, date, feedback badge -->
+                                    <div class="slds-grid slds-grid_align-spread slds-wrap slds-m-bottom_small">
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-wrap">
+                                            <div class="fm-output-field slds-m-right_medium">
+                                                <span class="fm-output-label">
+                                                    User
+                                                    <lightning-helptext content={tooltips.userName}></lightning-helptext>
+                                                </span>
+                                                <span class="fm-output-value">{row.userName}</span>
+                                            </div>
+                                            <div class="fm-output-field slds-m-right_medium">
+                                                <span class="fm-output-label">
+                                                    Date
+                                                    <lightning-helptext content={tooltips.requestDate}></lightning-helptext>
+                                                </span>
+                                                <span class="fm-output-value">
+                                                    <lightning-formatted-date-time
+                                                        value={row.requestDate}
+                                                        year="numeric"
+                                                        month="short"
+                                                        day="2-digit"
+                                                        hour="2-digit"
+                                                        minute="2-digit">
+                                                    </lightning-formatted-date-time>
+                                                </span>
+                                            </div>
+                                            <div class="fm-output-field">
+                                                <span class="fm-output-label">
+                                                    Feedback
+                                                    <lightning-helptext content={tooltips.feedbackValue}></lightning-helptext>
+                                                </span>
+                                                <span class={row.feedbackBadgeClass}>
+                                                    <lightning-icon icon-name={row.feedbackIcon} size="xx-small" alternative-text={row.feedbackLabel}></lightning-icon>
+                                                    <span class="slds-m-left_xx-small">{row.feedbackLabel}</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Input prompt -->
+                                    <div class="fm-output-field slds-m-bottom_small">
+                                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                            <span class="fm-output-label">
+                                                Input prompt
+                                                <lightning-helptext content={tooltips.inputPrompt}></lightning-helptext>
+                                            </span>
+                                            <lightning-button
+                                                label="Expand"
+                                                variant="base"
+                                                icon-name="utility:expand_alt"
+                                                icon-position="left"
+                                                data-field="input"
+                                                data-row-id={row.requestId}
+                                                onclick={handleExpandText}>
+                                            </lightning-button>
+                                        </div>
+                                        <pre class="fm-output-text">{row.inputPrompt}</pre>
+                                    </div>
+
+                                    <!-- Output text -->
+                                    <div class="fm-output-field slds-m-bottom_small">
+                                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                            <span class="fm-output-label">
+                                                Generated output
+                                                <lightning-helptext content={tooltips.generatedText}></lightning-helptext>
+                                            </span>
+                                            <lightning-button
+                                                label="Expand"
+                                                variant="base"
+                                                icon-name="utility:expand_alt"
+                                                icon-position="left"
+                                                data-field="output"
+                                                data-row-id={row.requestId}
+                                                onclick={handleExpandText}>
+                                            </lightning-button>
+                                        </div>
+                                        <pre class="fm-output-text">{row.generatedText}</pre>
+                                    </div>
+
+                                    <!-- Footer: tokens, model, safety flag -->
+                                    <div class="slds-grid slds-wrap slds-box slds-box_xx-small slds-theme_shade">
+                                        <div class="fm-output-field slds-m-right_medium">
+                                            <span class="fm-output-label">
+                                                Input tokens
+                                                <lightning-helptext content={tooltips.inputTokens}></lightning-helptext>
+                                            </span>
+                                            <span class="fm-output-value">{row.inputTokensDisplay}</span>
+                                        </div>
+                                        <div class="fm-output-field slds-m-right_medium">
+                                            <span class="fm-output-label">
+                                                Output tokens
+                                                <lightning-helptext content={tooltips.outputTokens}></lightning-helptext>
+                                            </span>
+                                            <span class="fm-output-value">{row.outputTokensDisplay}</span>
+                                        </div>
+                                        <div class="fm-output-field slds-m-right_medium">
+                                            <span class="fm-output-label">
+                                                Model
+                                                <lightning-helptext content={tooltips.model}></lightning-helptext>
+                                            </span>
+                                            <span class="fm-output-value">{row.model}</span>
+                                        </div>
+                                        <template lwc:if={row.isToxic}>
+                                            <div class="fm-output-field">
+                                                <span class="fm-output-label">
+                                                    Safety
+                                                    <lightning-helptext content={tooltips.isToxic}></lightning-helptext>
+                                                </span>
+                                                <span class={row.safetyFlagClass}>
+                                                    <lightning-icon icon-name="utility:warning" size="xx-small" alternative-text="Flagged" variant="error"></lightning-icon>
+                                                    <span class="slds-m-left_xx-small">Flagged</span>
+                                                </span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </lightning-accordion-section>
+                        </template>
+                    </lightning-accordion>
+
+                    <template lwc:if={showLoadMore}>
+                        <div class="slds-text-align_center slds-m-top_small">
+                            <lightning-button
+                                label="Load more"
+                                icon-name="utility:down"
+                                icon-position="right"
+                                onclick={handleLoadMore}>
+                            </lightning-button>
+                        </div>
+                    </template>
+                </template>
+            </div>
+        </lightning-card>
+    </template>
+
+    <!-- Expand modal — opened imperatively by handleExpandText -->
+    <c-ai-insights-text-modal lwc:ref="textModal"></c-ai-insights-text-modal>
+</template>
