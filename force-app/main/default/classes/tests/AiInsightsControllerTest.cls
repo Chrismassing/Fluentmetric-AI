@@ -508,6 +508,155 @@ private class AiInsightsControllerTest {
 
     // ───────── Live-service fallback (zero-arg path) ─────────────
 
+    // ───────── getEntityBreakdown — pivot drill ──────────────────
+
+    @IsTest
+    static void testGetEntityBreakdown_userToPromptTemplate() {
+        StubService stub = installStub();
+        DateTime start = DateTime.now().addDays(-7);
+        DateTime ending = DateTime.now();
+        List<ExplorerResultDTO> rows = AiInsightsController.getEntityBreakdown(
+            'User',
+            '005000000000001',
+            'PromptTemplate',
+            start,
+            ending,
+            null,
+            null
+        );
+        Assert.areEqual(1, stub.explorerCalls, 'service runExplorer was invoked');
+        Assert.isNotNull(rows);
+        ExplorerRequest req = stub.lastExplorerRequest;
+        Assert.areEqual('PromptTemplate', req.groupBy, 'breakdownBy becomes groupBy');
+        Assert.areEqual('RequestCount', req.metric, 'metric defaults to RequestCount');
+        Assert.areEqual(10, req.resultLimit, 'resultLimit defaults to 10');
+        Assert.isNotNull(req.criteria, 'criteria is built');
+        Assert.areEqual(1, req.criteria.userIds.size(), 'source User injected as single-element list');
+        Assert.areEqual('005000000000001', req.criteria.userIds[0]);
+        Assert.isNull(req.criteria.promptTemplateDevNames, 'no prompt filter on a User source');
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_promptToUser() {
+        StubService stub = installStub();
+        AiInsightsController.getEntityBreakdown(
+            'PromptTemplate',
+            '"Email_Draft"',
+            'User',
+            DateTime.now().addDays(-7),
+            DateTime.now(),
+            'TotalTokens',
+            5
+        );
+        ExplorerRequest req = stub.lastExplorerRequest;
+        Assert.areEqual('User', req.groupBy);
+        Assert.areEqual('TotalTokens', req.metric, 'metric override is honoured');
+        Assert.areEqual(5, req.resultLimit, 'resultLimit override is honoured');
+        Assert.areEqual(1, req.criteria.promptTemplateDevNames.size());
+        Assert.areEqual('"Email_Draft"', req.criteria.promptTemplateDevNames[0]);
+        Assert.isNull(req.criteria.userIds);
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_modelToPromptTemplate() {
+        StubService stub = installStub();
+        AiInsightsController.getEntityBreakdown(
+            'Model',
+            'gpt-4.1-2025-04-14',
+            'PromptTemplate',
+            DateTime.now().addDays(-1),
+            DateTime.now(),
+            null,
+            null
+        );
+        ExplorerRequest req = stub.lastExplorerRequest;
+        Assert.areEqual('PromptTemplate', req.groupBy);
+        Assert.areEqual(1, req.criteria.models.size());
+        Assert.areEqual('gpt-4.1-2025-04-14', req.criteria.models[0]);
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_featureToUser() {
+        StubService stub = installStub();
+        AiInsightsController.getEntityBreakdown(
+            'Feature',
+            'EinsteinSalesEmail',
+            'User',
+            DateTime.now().addDays(-1),
+            DateTime.now(),
+            null,
+            null
+        );
+        ExplorerRequest req = stub.lastExplorerRequest;
+        Assert.areEqual('User', req.groupBy);
+        Assert.areEqual(1, req.criteria.features.size());
+        Assert.areEqual('EinsteinSalesEmail', req.criteria.features[0]);
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_dayBreakdown() {
+        StubService stub = installStub();
+        // Day breakdown is the time-bucket pivot — entity stays the same,
+        // groupBy becomes Day. The drill panel uses this for the Trend tab.
+        AiInsightsController.getEntityBreakdown(
+            'User',
+            '005000000000001',
+            'Day',
+            DateTime.now().addDays(-30),
+            DateTime.now(),
+            'RequestCount',
+            null
+        );
+        Assert.areEqual('Day', stub.lastExplorerRequest.groupBy);
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_validation() {
+        installStub();
+        DateTime start = DateTime.now().addDays(-1);
+        DateTime ending = DateTime.now();
+
+        Boolean threwOnEntityType = false;
+        try {
+            AiInsightsController.getEntityBreakdown(null, 'k', 'User', start, ending, null, null);
+        } catch (AuraHandledException e) {
+            threwOnEntityType = true;
+        }
+        Assert.isTrue(threwOnEntityType, 'blank entityType wraps to AuraHandledException');
+
+        Boolean threwOnEntityKey = false;
+        try {
+            AiInsightsController.getEntityBreakdown('User', '   ', 'PromptTemplate', start, ending, null, null);
+        } catch (AuraHandledException e) {
+            threwOnEntityKey = true;
+        }
+        Assert.isTrue(threwOnEntityKey, 'blank entityKey wraps to AuraHandledException');
+
+        Boolean threwOnBreakdown = false;
+        try {
+            AiInsightsController.getEntityBreakdown('User', 'k', '', start, ending, null, null);
+        } catch (AuraHandledException e) {
+            threwOnBreakdown = true;
+        }
+        Assert.isTrue(threwOnBreakdown, 'blank breakdownBy wraps to AuraHandledException');
+
+        Boolean threwOnUnsupportedType = false;
+        try {
+            AiInsightsController.getEntityBreakdown('Squiggle', 'k', 'User', start, ending, null, null);
+        } catch (AuraHandledException e) {
+            threwOnUnsupportedType = true;
+        }
+        Assert.isTrue(threwOnUnsupportedType, 'unsupported entityType wraps to AuraHandledException');
+
+        Boolean threwOnDates = false;
+        try {
+            AiInsightsController.getEntityBreakdown('User', 'k', 'PromptTemplate', null, ending, null, null);
+        } catch (AuraHandledException e) {
+            threwOnDates = true;
+        }
+        Assert.isTrue(threwOnDates, 'null start date wraps to AuraHandledException');
+    }
+
     @IsTest
     static void testLiveServiceFallback() {
         // Exercise the zero-arg constructor path by leaving serviceOverride null.

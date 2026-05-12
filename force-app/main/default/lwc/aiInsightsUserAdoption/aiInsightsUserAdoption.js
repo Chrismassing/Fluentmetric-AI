@@ -339,9 +339,9 @@ export default class AiInsightsUserAdoption extends LightningElement {
         const actionName = event.detail.action && event.detail.action.name;
         const row = event.detail.row || {};
         if (actionName !== 'drillToUser') return;
-        const modal = this.template.querySelector('c-ai-insights-details-modal');
-        if (modal && typeof modal.open === 'function') {
-            modal.open('User', row.userId, row.userName, this.startDate, this.endDate);
+        const panel = this.template.querySelector('c-ai-insights-drill-panel');
+        if (panel && typeof panel.open === 'function') {
+            panel.open('User', row.userId, row.userName, this.startDate, this.endDate);
         }
     }
 

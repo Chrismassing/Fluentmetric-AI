@@ -299,9 +299,9 @@ export default class AiInsightsSafety extends LightningElement {
         const userId = event.currentTarget.dataset.userId;
         const userName = event.currentTarget.dataset.userName;
         if (!userId) return;
-        const modal = this.template.querySelector('c-ai-insights-details-modal');
-        if (modal && typeof modal.open === 'function') {
-            modal.open('User', userId, userName, this.startDate, this.endDate);
+        const panel = this.template.querySelector('c-ai-insights-drill-panel');
+        if (panel && typeof panel.open === 'function') {
+            panel.open('User', userId, userName, this.startDate, this.endDate);
         }
     }
 

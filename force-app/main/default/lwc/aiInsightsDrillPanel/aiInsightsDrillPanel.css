@@ -1,0 +1,178 @@
+/*
+ * Side-sheet drill panel. Slides in from the right; backdrop dims the rest
+ * of the page but keeps the parent table visible. Width is responsive: full
+ * width on phones, ~33rem on tablet+, capped on wide screens.
+ */
+
+.fm-drill-backdrop {
+    z-index: 9000;
+}
+
+.fm-drill-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 36rem;
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+    box-shadow: -2px 0 12px var(--slds-g-color-shadow-1, rgba(0, 0, 0, 0.18));
+    z-index: 9001;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+@media (min-width: 48em) {
+    .fm-drill-panel {
+        width: 36rem;
+    }
+}
+
+.fm-drill-header {
+    flex: 0 0 auto;
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+}
+
+.fm-drill-close {
+    --slds-c-button-color-background: transparent;
+}
+
+.fm-drill-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0;
+    background-color: var(--slds-g-color-surface-container-2, #f3f3f3);
+}
+
+/* Breadcrumbs */
+.fm-drill-breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.75rem;
+}
+.fm-drill-breadcrumbs__item {
+    display: inline-flex;
+    align-items: center;
+}
+.fm-drill-breadcrumbs__current {
+    font-weight: 600;
+}
+.fm-drill-breadcrumb {
+    color: var(--slds-g-color-brand-base-50, #0176d3);
+    cursor: pointer;
+}
+.fm-drill-breadcrumb:hover {
+    text-decoration: underline;
+}
+
+/* KPI strip */
+.fm-drill-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+@media (min-width: 30em) {
+    .fm-drill-stats {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.fm-drill-stat {
+    text-align: left;
+}
+.fm-drill-stat__label {
+    font-size: 0.75rem;
+    color: var(--slds-g-color-neutral-base-50, #747474);
+    margin: 0 0 0.125rem;
+}
+.fm-drill-stat__value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+}
+
+/* Tabs */
+.fm-drill-tabs {
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    margin: 0;
+    padding-left: 0.5rem;
+}
+
+/* Breakdown rows */
+.fm-drill-breakdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    row-gap: 0.25rem;
+}
+
+.fm-drill-breakdown-row {
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+    border-radius: 0.25rem;
+}
+
+.fm-drill-breakdown-button,
+.fm-drill-breakdown-row__static {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+.fm-drill-breakdown-button {
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.fm-drill-breakdown-button:hover,
+.fm-drill-breakdown-button:focus {
+    background-color: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    border-color: var(--slds-g-color-border-base-1, #e5e5e5);
+    outline: none;
+}
+
+.fm-drill-breakdown-row__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fm-drill-breakdown-row__value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* Sample request card */
+.fm-drill-sample {
+    padding: 0.5rem 0.75rem;
+}
+
+.fm-drill-sample__text {
+    background-color: var(--slds-g-color-surface-container-2, #f3f3f3);
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    font-size: 0.8125rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 12rem;
+    overflow-y: auto;
+    margin: 0;
+}

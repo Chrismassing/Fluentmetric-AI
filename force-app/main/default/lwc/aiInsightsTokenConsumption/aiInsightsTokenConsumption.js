@@ -381,9 +381,9 @@ export default class AiInsightsTokenConsumption extends LightningElement {
             }
         }
 
-        const modal = this.template.querySelector('c-ai-insights-details-modal');
-        if (modal && typeof modal.open === 'function') {
-            modal.open(entityType, groupKey, groupLabel, startIso, endIso);
+        const panel = this.template.querySelector('c-ai-insights-drill-panel');
+        if (panel && typeof panel.open === 'function') {
+            panel.open(entityType, groupKey, groupLabel, startIso, endIso);
         }
     }
 

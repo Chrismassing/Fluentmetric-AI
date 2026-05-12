@@ -460,10 +460,11 @@ export default class AiInsightsExplorer extends LightningElement {
         };
         const entityType = map[this.groupBy];
         if (!entityType) return;
-        const modal = this.template.querySelector('c-ai-insights-details-modal');
-        if (modal && typeof modal.open === 'function') {
-            const criteriaJson = JSON.stringify(this.criteria || {});
-            modal.open(entityType, groupKey, groupLabel, this.startDate, this.endDate, criteriaJson);
+        const panel = this.template.querySelector('c-ai-insights-drill-panel');
+        if (panel && typeof panel.open === 'function') {
+            // Filter-aware drill (criteria) returns in Phase 5; the panel
+            // currently scopes only to the entity + date range.
+            panel.open(entityType, groupKey, groupLabel, this.startDate, this.endDate);
         }
     }
 

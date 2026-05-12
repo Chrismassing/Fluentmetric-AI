@@ -1,0 +1,260 @@
+<template>
+    <template lwc:if={isOpen}>
+        <!-- Backdrop -->
+        <div
+            class="slds-backdrop slds-backdrop_open fm-drill-backdrop"
+            data-role="backdrop"
+            onclick={handleBackdropClick}>
+        </div>
+
+        <!-- Side sheet -->
+        <aside
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="fm-drill-heading"
+            class="fm-drill-panel slds-fade-in-open">
+
+            <!-- Header -->
+            <header class="fm-drill-header">
+                <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <lightning-icon
+                            icon-name={headerIcon}
+                            size="small"
+                            alternative-text={headerEntityType}>
+                        </lightning-icon>
+                        <div class="slds-m-left_small">
+                            <p class="slds-text-title_caps slds-text-color_weak">{headerEntityType}</p>
+                            <h2 id="fm-drill-heading" class="slds-text-heading_small slds-hyphenate" title={headerLabel}>
+                                {headerLabel}
+                            </h2>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="slds-button slds-button_icon slds-button_icon-bare fm-drill-close"
+                        title="Close drill panel"
+                        aria-label="Close drill panel"
+                        onclick={handleClose}>
+                        <lightning-icon icon-name="utility:close" size="small" alternative-text="Close"></lightning-icon>
+                    </button>
+                </div>
+
+                <!-- Breadcrumbs -->
+                <template lwc:if={hasBreadcrumbs}>
+                    <nav aria-label="Drill breadcrumb" class="slds-m-top_x-small">
+                        <ol class="fm-drill-breadcrumbs">
+                            <template for:each={breadcrumbs} for:item="crumb">
+                                <li key={crumb.idx} class="fm-drill-breadcrumbs__item">
+                                    <button
+                                        type="button"
+                                        class="slds-button slds-button_reset fm-drill-breadcrumb"
+                                        data-idx={crumb.idx}
+                                        title={crumb.label}
+                                        onclick={handleBreadcrumbClick}>
+                                        <span class="slds-text-color_weak slds-m-right_xx-small">{crumb.type}</span>
+                                        <span>{crumb.label}</span>
+                                    </button>
+                                    <lightning-icon
+                                        icon-name="utility:chevronright"
+                                        size="xx-small"
+                                        alternative-text=""
+                                        class="slds-m-horizontal_xx-small">
+                                    </lightning-icon>
+                                </li>
+                            </template>
+                            <li class="fm-drill-breadcrumbs__item fm-drill-breadcrumbs__current">
+                                <span class="slds-text-color_weak slds-m-right_xx-small">{headerEntityType}</span>
+                                <span>{headerLabel}</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </template>
+            </header>
+
+            <!-- Body -->
+            <div class="fm-drill-body">
+                <template lwc:if={isLoading}>
+                    <div class="slds-align_absolute-center slds-p-vertical_large" role="status">
+                        <lightning-spinner alternative-text="Loading" size="medium" variant="brand"></lightning-spinner>
+                    </div>
+                </template>
+
+                <template lwc:if={showError}>
+                    <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                        <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                        <span class="slds-m-left_x-small">{errorMessage}</span>
+                    </div>
+                </template>
+
+                <!-- KPI strip -->
+                <section class="fm-drill-stats" aria-label="Entity statistics">
+                    <div class="fm-drill-stat">
+                        <p class="fm-drill-stat__label">Requests</p>
+                        <p class="fm-drill-stat__value">{requestCountDisplay}</p>
+                    </div>
+                    <div class="fm-drill-stat">
+                        <p class="fm-drill-stat__label">Total tokens</p>
+                        <p class="fm-drill-stat__value">{totalTokensDisplay}</p>
+                    </div>
+                    <div class="fm-drill-stat">
+                        <p class="fm-drill-stat__label">Acceptance</p>
+                        <p class="fm-drill-stat__value">{acceptanceDisplay}</p>
+                    </div>
+                    <div class="fm-drill-stat">
+                        <p class="fm-drill-stat__label">Safety flags</p>
+                        <p class="fm-drill-stat__value">{toxicFlagDisplay}</p>
+                    </div>
+                </section>
+
+                <!-- Tabs -->
+                <ul class="slds-tabs_default__nav fm-drill-tabs" role="tablist">
+                    <li
+                        class={breakdownTabClass}
+                        role="presentation">
+                        <button
+                            type="button"
+                            class="slds-tabs_default__link"
+                            role="tab"
+                            data-tab="breakdown"
+                            aria-selected={showBreakdownTab}
+                            onclick={handleTabClick}>
+                            Breakdown
+                        </button>
+                    </li>
+                    <li
+                        class={samplesTabClass}
+                        role="presentation">
+                        <button
+                            type="button"
+                            class="slds-tabs_default__link"
+                            role="tab"
+                            data-tab="samples"
+                            aria-selected={showSamplesTab}
+                            onclick={handleTabClick}>
+                            Sample requests
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Breakdown tab -->
+                <template lwc:if={showBreakdownTab}>
+                    <section class="slds-p-around_small">
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                            <p class="slds-text-body_small slds-text-color_weak">
+                                Top {breakdownTitle} for this {headerEntityType}
+                            </p>
+                            <lightning-combobox
+                                variant="label-hidden"
+                                label="Breakdown by"
+                                value={currentBreakdown}
+                                options={breakdownOptions}
+                                onchange={handleBreakdownSelectorChange}>
+                            </lightning-combobox>
+                        </div>
+
+                        <template lwc:if={hasBreakdownRows}>
+                            <ul class="fm-drill-breakdown-list" role="list">
+                                <template for:each={breakdown} for:item="row">
+                                    <li key={row.groupKey} class="fm-drill-breakdown-row">
+                                        <template lwc:if={row.isClickable}>
+                                            <button
+                                                type="button"
+                                                class="slds-button slds-button_reset fm-drill-breakdown-button"
+                                                data-group-key={row.groupKey}
+                                                data-group-label={row.groupLabel}
+                                                title={row.groupLabel}
+                                                onclick={handleBreakdownRowClick}>
+                                                <span class="fm-drill-breakdown-row__label">{row.groupLabel}</span>
+                                                <span class="fm-drill-breakdown-row__value">{row.metricDisplay}</span>
+                                            </button>
+                                        </template>
+                                        <template lwc:if={row.isClickable} lwc:else>
+                                            <span class="fm-drill-breakdown-row__static">
+                                                <span class="fm-drill-breakdown-row__label">{row.groupLabel}</span>
+                                                <span class="fm-drill-breakdown-row__value">{row.metricDisplay}</span>
+                                            </span>
+                                        </template>
+                                    </li>
+                                </template>
+                            </ul>
+                        </template>
+
+                        <template lwc:if={hasNoBreakdownRows}>
+                            <div class="slds-box slds-theme_shade slds-text-body_small slds-text-color_weak" role="status">
+                                <p>No data for this breakdown in the selected range.</p>
+                            </div>
+                        </template>
+                    </section>
+                </template>
+
+                <!-- Sample requests tab -->
+                <template lwc:if={showSamplesTab}>
+                    <section class="slds-p-around_small">
+                        <template lwc:if={hasRecentRequests}>
+                            <lightning-accordion
+                                allow-multiple-sections-open
+                                active-section-name={activeSections}
+                                onsectiontoggle={handleAccordionToggle}>
+                                <template for:each={recentRequests} for:item="row">
+                                    <lightning-accordion-section
+                                        key={row.sectionName}
+                                        name={row.sectionName}
+                                        label={row.sectionLabel}>
+                                        <div class="fm-drill-sample">
+                                            <div class="slds-m-bottom_x-small slds-text-body_small slds-text-color_weak">
+                                                <span>Model:</span>
+                                                <span class="slds-m-left_xx-small slds-text-color_default">{row.model}</span>
+                                                <span class="slds-m-left_medium">Tokens:</span>
+                                                <span class="slds-m-left_xx-small slds-text-color_default">in {row.inputTokensDisplay} · out {row.outputTokensDisplay}</span>
+                                            </div>
+                                            <div class="slds-m-bottom_small">
+                                                <div class="slds-grid slds-grid_align-spread slds-m-bottom_xx-small">
+                                                    <span class="slds-text-title_caps slds-text-color_weak">Input</span>
+                                                    <lightning-button
+                                                        label="Expand"
+                                                        variant="base"
+                                                        icon-name="utility:expand_alt"
+                                                        icon-position="left"
+                                                        data-field="input"
+                                                        data-request-id={row.requestId}
+                                                        onclick={handleExpandText}>
+                                                    </lightning-button>
+                                                </div>
+                                                <pre class="fm-drill-sample__text">{row.inputPromptCollapsed}</pre>
+                                            </div>
+                                            <div>
+                                                <div class="slds-grid slds-grid_align-spread slds-m-bottom_xx-small">
+                                                    <span class="slds-text-title_caps slds-text-color_weak">Output</span>
+                                                    <lightning-button
+                                                        label="Expand"
+                                                        variant="base"
+                                                        icon-name="utility:expand_alt"
+                                                        icon-position="left"
+                                                        data-field="output"
+                                                        data-request-id={row.requestId}
+                                                        onclick={handleExpandText}>
+                                                    </lightning-button>
+                                                </div>
+                                                <pre class="fm-drill-sample__text">{row.generatedTextCollapsed}</pre>
+                                            </div>
+                                        </div>
+                                    </lightning-accordion-section>
+                                </template>
+                            </lightning-accordion>
+                        </template>
+                        <template lwc:if={hasNoRecentRequests}>
+                            <div class="slds-box slds-theme_shade slds-text-body_small slds-text-color_weak" role="status">
+                                <p>No recent requests in the selected range.</p>
+                            </div>
+                        </template>
+                    </section>
+                </template>
+            </div>
+        </aside>
+
+        <!-- Reused for full-text expansion -->
+        <c-ai-insights-text-modal></c-ai-insights-text-modal>
+    </template>
+</template>

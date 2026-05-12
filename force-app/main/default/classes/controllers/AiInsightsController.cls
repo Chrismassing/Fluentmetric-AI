@@ -236,6 +236,80 @@ public with sharing class AiInsightsController {
         }
     }
 
+    /**
+     * Pivot drill: given a source entity (User/PromptTemplate/Model/Feature),
+     * group its requests by another dimension and return the top N rows. This
+     * is the workhorse behind the side-sheet drill panel — clicking a User
+     * with breakdownBy="PromptTemplate" returns the prompts that user invoked,
+     * sorted by RequestCount descending.
+     *
+     * Implementation is a thin wrapper around runExplorer: the source entity
+     * is injected into FilterCriteria as a single-element list, breakdownBy
+     * becomes groupBy, and metric defaults to RequestCount (callers can
+     * override). resultLimit defaults to 10 to keep the panel scannable.
+     *
+     * Cacheable=true is safe — the same (entity, breakdown, range) tuple
+     * always returns the same answer for a given org snapshot.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<ExplorerResultDTO> getEntityBreakdown(
+        String entityType,
+        String entityKey,
+        String breakdownBy,
+        DateTime startDate,
+        DateTime endDate,
+        String metric,
+        Integer resultLimit
+    ) {
+        try {
+            if (String.isBlank(entityType)) {
+                throw new IllegalArgumentException('entityType is required');
+            }
+            if (String.isBlank(entityKey)) {
+                throw new IllegalArgumentException('entityKey is required');
+            }
+            if (String.isBlank(breakdownBy)) {
+                throw new IllegalArgumentException('breakdownBy is required');
+            }
+            DateRangeFilter filter = buildFilter(startDate, endDate);
+
+            FilterCriteria criteria = new FilterCriteria(filter.startDate, filter.endDate);
+            applyEntityToCriteria(criteria, entityType, entityKey);
+
+            ExplorerRequest request = new ExplorerRequest();
+            request.startDate = filter.startDate;
+            request.endDate = filter.endDate;
+            request.groupBy = breakdownBy;
+            request.metric = String.isBlank(metric) ? 'RequestCount' : metric;
+            request.criteria = criteria;
+            request.resultLimit = (resultLimit == null || resultLimit <= 0) ? 10 : resultLimit;
+
+            return service().runExplorer(request);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load entity breakdown');
+        }
+    }
+
+    /**
+     * Inject a single source entity into a FilterCriteria. The mapping mirrors
+     * getEntityDetails — the same identifier shape (raw user Id, quoted prompt
+     * dev name, model string, feature string) is reused.
+     */
+    private static void applyEntityToCriteria(FilterCriteria criteria, String entityType, String entityKey) {
+        String type = entityType == null ? '' : entityType.trim();
+        if ('User'.equalsIgnoreCase(type)) {
+            criteria.userIds = new List<String>{ entityKey };
+        } else if ('PromptTemplate'.equalsIgnoreCase(type)) {
+            criteria.promptTemplateDevNames = new List<String>{ entityKey };
+        } else if ('Model'.equalsIgnoreCase(type)) {
+            criteria.models = new List<String>{ entityKey };
+        } else if ('Feature'.equalsIgnoreCase(type)) {
+            criteria.features = new List<String>{ entityKey };
+        } else {
+            throw new IllegalArgumentException('Unsupported entityType: ' + entityType);
+        }
+    }
+
     @AuraEnabled
     public static Map<String, Boolean> checkPrerequisites() {
         try {
