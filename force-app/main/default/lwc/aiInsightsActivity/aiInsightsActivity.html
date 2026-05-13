@@ -1,0 +1,43 @@
+<template>
+    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small fm-activity-toolbar">
+        <p class="slds-text-body_small slds-text-color_weak">
+            Group by — switch the lens without leaving the tab.
+        </p>
+        <div class="slds-button-group" role="group" aria-label="Group activity by">
+            <button
+                type="button"
+                data-view="users"
+                class={usersBtnClass}
+                aria-pressed={isUsers}
+                onclick={handleViewChange}>
+                Users
+            </button>
+            <button
+                type="button"
+                data-view="prompts"
+                class={promptsBtnClass}
+                aria-pressed={isPrompts}
+                onclick={handleViewChange}>
+                Prompts
+            </button>
+            <button
+                type="button"
+                data-view="tokens"
+                class={tokensBtnClass}
+                aria-pressed={isTokens}
+                onclick={handleViewChange}>
+                Tokens
+            </button>
+        </div>
+    </div>
+
+    <template lwc:if={isUsers}>
+        <c-ai-insights-user-adoption></c-ai-insights-user-adoption>
+    </template>
+    <template lwc:if={isPrompts}>
+        <c-ai-insights-prompt-analytics></c-ai-insights-prompt-analytics>
+    </template>
+    <template lwc:if={isTokens}>
+        <c-ai-insights-token-consumption></c-ai-insights-token-consumption>
+    </template>
+</template>

@@ -17,9 +17,10 @@ const TT = TOOLTIPS.promptAnalytics;
  *
  * Subscribes to the shared date range on `AiInsightsDateRange__c`, calls
  * `AiInsightsController.getUsageByPrompt`, and renders a sortable, searchable
- * lightning-datatable. Clicking a row fires a `promptselected` custom event
- * carrying `{ promptDevName, promptLabel }`; the parent `aiInsightsApp`
- * bridges it to `aiInsightsPromptOutputViewer`.
+ * lightning-datatable. Clicking a row opens the unified drill side-sheet
+ * (`c-ai-insights-drill-panel`) for the selected PromptTemplate entity. A
+ * legacy `promptselected` custom event is still dispatched for any external
+ * consumers but no internal host bridges it any more.
  *
  * Every column uses `helpText` so hovering the header reveals the metric
  * definition — a tiny but important accessibility / self-service feature.
@@ -326,7 +327,10 @@ export default class AiInsightsPromptAnalytics extends LightningElement {
 
     // --- Row selection ------------------------------------------------------
 
-    // Fires when the "Prompt Template" button cell is clicked.
+    // Fires when the "Prompt Template" button cell is clicked. Opens the
+    // unified drill side-sheet for the selected PromptTemplate entity. The
+    // legacy `promptselected` event is still dispatched for backwards
+    // compatibility, but no host bridges it any more.
     handleRowAction(event) {
         const row = event.detail.row;
         if (row) this.selectPrompt(row);
@@ -338,6 +342,17 @@ export default class AiInsightsPromptAnalytics extends LightningElement {
         this.allRows = this.rawRows.map((r) => this.toViewModel(r));
         this.applySort();
         this.applyFilterAndPagination();
+
+        const panel = this.template.querySelector('c-ai-insights-drill-panel');
+        if (panel && typeof panel.open === 'function') {
+            panel.open(
+                'PromptTemplate',
+                row.promptDevName,
+                row.promptLabel,
+                this.startDate,
+                this.endDate
+            );
+        }
 
         this.dispatchEvent(new CustomEvent('promptselected', {
             detail: {

@@ -28,30 +28,18 @@
                     </div>
                 </lightning-tab>
 
+                <!-- Activity = Users + Prompts + Tokens consolidated under a
+                     group-by toggle. Cost analysis appears as a collapsible
+                     panel above the table, gated by Enable_Cost_Metrics__c. -->
                 <lightning-tab
-                    label="Users"
-                    icon-name="utility:user"
-                    title={tooltips.tabUsers}>
-                    <div class="slds-p-around_medium">
-                        <c-ai-insights-user-adoption></c-ai-insights-user-adoption>
-                    </div>
-                </lightning-tab>
-
-                <lightning-tab
-                    label="Tokens"
-                    icon-name="utility:number_input"
-                    title={tooltips.tabTokens}>
-                    <div class="slds-p-around_medium">
-                        <c-ai-insights-token-consumption></c-ai-insights-token-consumption>
-                    </div>
-                </lightning-tab>
-
-                <lightning-tab
-                    label="Cost analysis"
-                    icon-name="utility:money"
-                    title="Estimated cost panel — gated by Enable_Cost_Metrics__c. Shows tier-based USD and Flex Credit figures with confidence badges. Default dashboards show tokens only; this tab is the only surface where cost estimates appear.">
+                    label="Activity"
+                    icon-name="utility:activity"
+                    title={tooltips.tabActivity}>
                     <div class="slds-p-around_medium">
                         <c-ai-insights-cost-analysis></c-ai-insights-cost-analysis>
+                        <div class="slds-m-top_small">
+                            <c-ai-insights-activity></c-ai-insights-activity>
+                        </div>
                     </div>
                 </lightning-tab>
 

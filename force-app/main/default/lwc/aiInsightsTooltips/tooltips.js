@@ -199,6 +199,8 @@ export const TOOLTIPS = {
     app: {
         tabOverview:
             'Headline KPIs — total requests, unique users, acceptance rate, token volume, feedback counts, and safety flags for the selected date range.',
+        tabActivity:
+            'Activity — switch the lens between Users, Prompts, and Tokens with one control. Each row drills into a side-sheet pivot. Cost analysis appears here when enabled.',
         tabUsers:
             'Per-user adoption — who is using Einstein GenAI, how often, and with which prompts. Sortable, searchable table.',
         tabTokens:
