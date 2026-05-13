@@ -51,6 +51,11 @@ export default class AiInsightsUserAdoption extends LightningElement {
     // The User cell is rendered as a button so clicks open the drill-in
     // modal; the `name` field on the typeAttributes is what comes back on the
     // onrowaction event, so we key on "drillToUser" to route the handler.
+    // Column order convention across all entity tables (Users / Tokens /
+    // Explorer / drill panel): Label · Requests · Tokens · Acceptance ·
+    // Last seen · First seen · supporting columns · Cost (gated). Putting
+    // the headline numbers next to the label keeps cross-table comparison
+    // honest and "sort by tokens" one click away.
     columns = [
         {
             label: 'User',
@@ -67,8 +72,6 @@ export default class AiInsightsUserAdoption extends LightningElement {
                 title: TT.clickToDrill
             }
         },
-        { label: 'Profile', fieldName: 'profileName', type: 'text', sortable: true, helpText: TT.profileName },
-        { label: 'Department', fieldName: 'department', type: 'text', sortable: true, helpText: TT.department },
         {
             label: 'Requests',
             fieldName: 'requestCount',
@@ -79,20 +82,13 @@ export default class AiInsightsUserAdoption extends LightningElement {
             typeAttributes: { maximumFractionDigits: 0 }
         },
         {
-            label: 'First Used',
-            fieldName: 'firstUsed',
-            type: 'date',
+            label: 'Total Tokens',
+            fieldName: 'totalTokensDisplay',
+            type: 'text',
             sortable: true,
-            helpText: TT.firstUsed,
-            typeAttributes: { year: 'numeric', month: 'short', day: '2-digit' }
-        },
-        {
-            label: 'Last Used',
-            fieldName: 'lastUsed',
-            type: 'date',
-            sortable: true,
-            helpText: TT.lastUsed,
-            typeAttributes: { year: 'numeric', month: 'short', day: '2-digit' }
+            sortBy: 'totalTokens',
+            helpText: TT.totalTokens,
+            cellAttributes: { alignment: 'right' }
         },
         {
             label: 'Acceptance Rate',
@@ -107,16 +103,37 @@ export default class AiInsightsUserAdoption extends LightningElement {
                 class: { fieldName: 'feedbackRatioClass' }
             }
         },
-        { label: 'Top Prompts', fieldName: 'topPromptsDisplay', type: 'text', sortable: false, wrapText: true, helpText: TT.topPrompts },
         {
-            label: 'Total Tokens',
-            fieldName: 'totalTokensDisplay',
-            type: 'text',
+            label: 'Last Used',
+            fieldName: 'lastUsed',
+            type: 'date',
             sortable: true,
-            sortBy: 'totalTokens',
-            helpText: TT.totalTokens,
-            cellAttributes: { alignment: 'right' }
+            helpText: TT.lastUsed,
+            typeAttributes: {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }
         },
+        {
+            label: 'First Used',
+            fieldName: 'firstUsed',
+            type: 'date',
+            sortable: true,
+            helpText: TT.firstUsed,
+            typeAttributes: {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }
+        },
+        { label: 'Top Prompts', fieldName: 'topPromptsDisplay', type: 'text', sortable: false, wrapText: true, helpText: TT.topPrompts },
+        { label: 'Profile', fieldName: 'profileName', type: 'text', sortable: true, helpText: TT.profileName },
+        { label: 'Department', fieldName: 'department', type: 'text', sortable: true, helpText: TT.department },
         {
             label: 'Est. Cost',
             fieldName: 'estimatedUsdDisplay',

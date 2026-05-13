@@ -80,6 +80,9 @@ export default class AiInsightsTokenConsumption extends LightningElement {
     // Group column is a button so the user can click to drill into entity
     // details. We map the current groupBy -> entityType inside the row action
     // handler. Day/Week groupings are not drillable (no single entity).
+    // Canonical column order across entity tables: Label · Requests ·
+    // Total tokens · Input · Output · Avg. Tokens are headline columns —
+    // sortable and right-aligned so magnitudes line up vertically.
     columns = [
         {
             label: 'Group',
@@ -94,6 +97,24 @@ export default class AiInsightsTokenConsumption extends LightningElement {
                 variant: 'base',
                 disabled: { fieldName: 'drillDisabled' }
             }
+        },
+        {
+            label: 'Requests',
+            fieldName: 'requestCount',
+            type: 'number',
+            sortable: true,
+            helpText: TT.requestCount,
+            cellAttributes: { alignment: 'right' },
+            typeAttributes: { maximumFractionDigits: 0 }
+        },
+        {
+            label: 'Total Tokens',
+            fieldName: 'totalTokensDisplay',
+            type: 'text',
+            sortable: true,
+            sortBy: 'totalTokens',
+            helpText: TT.totalTokens,
+            cellAttributes: { alignment: 'right' }
         },
         {
             label: 'Input Tokens',
@@ -112,24 +133,6 @@ export default class AiInsightsTokenConsumption extends LightningElement {
             sortBy: 'outputTokens',
             helpText: TT.outputTokens,
             cellAttributes: { alignment: 'right' }
-        },
-        {
-            label: 'Total',
-            fieldName: 'totalTokensDisplay',
-            type: 'text',
-            sortable: true,
-            sortBy: 'totalTokens',
-            helpText: TT.totalTokens,
-            cellAttributes: { alignment: 'right' }
-        },
-        {
-            label: 'Requests',
-            fieldName: 'requestCount',
-            type: 'number',
-            sortable: true,
-            helpText: TT.requestCount,
-            cellAttributes: { alignment: 'right' },
-            typeAttributes: { maximumFractionDigits: 0 }
         },
         {
             label: 'Avg per Request',
