@@ -1,5 +1,5 @@
 <template>
-    <div class="slds-p-around_small">
+    <div class="slds-p-around_small" onopeninexplorer={handleOpenInExplorer}>
         <!-- ──────────── Header + Date Filter (outside the tabset) ──────────── -->
         <header class="slds-m-bottom_small">
             <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-end slds-wrap">
@@ -25,8 +25,9 @@
         <!-- Main tabset — full width. The filter rail still lives inside the
              Explorer tab; only the pills are hoisted globally. -->
         <div class="slds-card fm-app-tabs">
-            <lightning-tabset variant="standard" class="fm-tabset">
+            <lightning-tabset variant="standard" class="fm-tabset" active-tab-value={activeTab}>
                 <lightning-tab
+                    value="overview"
                     label="Overview"
                     icon-name="utility:dashboard"
                     title={tooltips.tabOverview}>
@@ -39,6 +40,7 @@
                      group-by toggle. Cost analysis appears as a collapsible
                      panel above the table, gated by Enable_Cost_Metrics__c. -->
                 <lightning-tab
+                    value="activity"
                     label="Activity"
                     icon-name="utility:activity"
                     title={tooltips.tabActivity}>
@@ -51,6 +53,7 @@
                 </lightning-tab>
 
                 <lightning-tab
+                    value="safety"
                     label="Safety"
                     icon-name="utility:shield"
                     title={tooltips.tabSafety}>
@@ -61,6 +64,7 @@
 
                 <!-- Explorer: rail + pills in a two-column layout inside the tab. -->
                 <lightning-tab
+                    value="explorer"
                     label="Explorer"
                     icon-name="utility:search"
                     title={tooltips.tabExplorer}>

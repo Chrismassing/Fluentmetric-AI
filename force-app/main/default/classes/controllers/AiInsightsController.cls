@@ -259,7 +259,8 @@ public with sharing class AiInsightsController {
         DateTime startDate,
         DateTime endDate,
         String metric,
-        Integer resultLimit
+        Integer resultLimit,
+        String criteriaJson
     ) {
         try {
             if (String.isBlank(entityType)) {
@@ -273,7 +274,14 @@ public with sharing class AiInsightsController {
             }
             DateRangeFilter filter = buildFilter(startDate, endDate);
 
-            FilterCriteria criteria = new FilterCriteria(filter.startDate, filter.endDate);
+            // Start from any inbound rail criteria (e.g. Explorer pre-filtered
+            // by Model + Feature), then layer the source entity on top so the
+            // drill stays scoped to the same slice the parent table is showing.
+            FilterCriteria criteria = String.isBlank(criteriaJson)
+                ? new FilterCriteria(filter.startDate, filter.endDate)
+                : parseCriteria(criteriaJson, filter.startDate, filter.endDate);
+            criteria.startDate = filter.startDate;
+            criteria.endDate = filter.endDate;
             applyEntityToCriteria(criteria, entityType, entityKey);
 
             ExplorerRequest request = new ExplorerRequest();

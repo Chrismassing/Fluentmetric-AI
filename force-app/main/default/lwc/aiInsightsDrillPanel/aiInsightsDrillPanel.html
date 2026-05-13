@@ -31,14 +31,24 @@
                             </h2>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        class="slds-button slds-button_icon slds-button_icon-bare fm-drill-close"
-                        title="Close drill panel"
-                        aria-label="Close drill panel"
-                        onclick={handleClose}>
-                        <lightning-icon icon-name="utility:close" size="small" alternative-text="Close"></lightning-icon>
-                    </button>
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <button
+                            type="button"
+                            class="slds-button slds-button_neutral slds-m-right_x-small fm-drill-pin"
+                            title="Pin this view to Explorer (carries the current entity + filters + group-by)"
+                            onclick={handleOpenInExplorer}>
+                            <lightning-icon icon-name="utility:open" size="xx-small" alternative-text="" class="slds-m-right_xx-small"></lightning-icon>
+                            Open in Explorer
+                        </button>
+                        <button
+                            type="button"
+                            class="slds-button slds-button_icon slds-button_icon-bare fm-drill-close"
+                            title="Close drill panel"
+                            aria-label="Close drill panel"
+                            onclick={handleClose}>
+                            <lightning-icon icon-name="utility:close" size="small" alternative-text="Close"></lightning-icon>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Breadcrumbs -->

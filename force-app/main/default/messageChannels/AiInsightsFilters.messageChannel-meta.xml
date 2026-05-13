@@ -19,4 +19,8 @@
         <fieldName>presetLabel</fieldName>
         <description>Human-readable label for the date preset (e.g. "Last 30 days", "Custom").</description>
     </lightningMessageFields>
+    <lightningMessageFields>
+        <fieldName>groupBy</fieldName>
+        <description>Optional Explorer group-by hint set by "Open in Explorer" hand-offs (e.g. "User", "PromptTemplate", "Day"). Subscribers that aren't the Explorer can ignore it.</description>
+    </lightningMessageFields>
 </LightningMessageChannel>

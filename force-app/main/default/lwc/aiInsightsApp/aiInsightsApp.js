@@ -32,6 +32,11 @@ export default class AiInsightsApp extends LightningElement {
     // that hosts the rail).
     @track railExpanded = true;
 
+    // Bound to lightning-tabset.active-tab-value so handleOpenInExplorer
+    // can flip the active tab programmatically when the drill panel hands
+    // off a pinned view.
+    @track activeTab = 'overview';
+
     // Tab titles / helper copy pulled from the centralized TOOLTIPS module so
     // every tooltip string lives in one place and stays consistent.
     tooltips = TOOLTIPS.app;
@@ -61,6 +66,16 @@ export default class AiInsightsApp extends LightningElement {
 
     handleRailToggle(event) {
         this.railExpanded = !!(event.detail && event.detail.expanded);
+    }
+
+    /**
+     * Drill panel "Open in Explorer" hand-off. The panel has already
+     * published the criteria + groupBy hint on the AiInsightsFilters LMS
+     * channel — all we have to do is flip the active tab so the user lands
+     * on Explorer and sees the pinned view.
+     */
+    handleOpenInExplorer() {
+        this.activeTab = 'explorer';
     }
 
     get railColumnClass() {

@@ -522,6 +522,7 @@ private class AiInsightsControllerTest {
             start,
             ending,
             null,
+            null,
             null
         );
         Assert.areEqual(1, stub.explorerCalls, 'service runExplorer was invoked');
@@ -546,7 +547,8 @@ private class AiInsightsControllerTest {
             DateTime.now().addDays(-7),
             DateTime.now(),
             'TotalTokens',
-            5
+            5,
+            null
         );
         ExplorerRequest req = stub.lastExplorerRequest;
         Assert.areEqual('User', req.groupBy);
@@ -567,6 +569,7 @@ private class AiInsightsControllerTest {
             DateTime.now().addDays(-1),
             DateTime.now(),
             null,
+            null,
             null
         );
         ExplorerRequest req = stub.lastExplorerRequest;
@@ -584,6 +587,7 @@ private class AiInsightsControllerTest {
             'User',
             DateTime.now().addDays(-1),
             DateTime.now(),
+            null,
             null,
             null
         );
@@ -605,6 +609,7 @@ private class AiInsightsControllerTest {
             DateTime.now().addDays(-30),
             DateTime.now(),
             'RequestCount',
+            null,
             null
         );
         Assert.areEqual('Day', stub.lastExplorerRequest.groupBy);
@@ -618,7 +623,7 @@ private class AiInsightsControllerTest {
 
         Boolean threwOnEntityType = false;
         try {
-            AiInsightsController.getEntityBreakdown(null, 'k', 'User', start, ending, null, null);
+            AiInsightsController.getEntityBreakdown(null, 'k', 'User', start, ending, null, null, null);
         } catch (AuraHandledException e) {
             threwOnEntityType = true;
         }
@@ -626,7 +631,7 @@ private class AiInsightsControllerTest {
 
         Boolean threwOnEntityKey = false;
         try {
-            AiInsightsController.getEntityBreakdown('User', '   ', 'PromptTemplate', start, ending, null, null);
+            AiInsightsController.getEntityBreakdown('User', '   ', 'PromptTemplate', start, ending, null, null, null);
         } catch (AuraHandledException e) {
             threwOnEntityKey = true;
         }
@@ -634,7 +639,7 @@ private class AiInsightsControllerTest {
 
         Boolean threwOnBreakdown = false;
         try {
-            AiInsightsController.getEntityBreakdown('User', 'k', '', start, ending, null, null);
+            AiInsightsController.getEntityBreakdown('User', 'k', '', start, ending, null, null, null);
         } catch (AuraHandledException e) {
             threwOnBreakdown = true;
         }
@@ -642,7 +647,7 @@ private class AiInsightsControllerTest {
 
         Boolean threwOnUnsupportedType = false;
         try {
-            AiInsightsController.getEntityBreakdown('Squiggle', 'k', 'User', start, ending, null, null);
+            AiInsightsController.getEntityBreakdown('Squiggle', 'k', 'User', start, ending, null, null, null);
         } catch (AuraHandledException e) {
             threwOnUnsupportedType = true;
         }
@@ -650,11 +655,96 @@ private class AiInsightsControllerTest {
 
         Boolean threwOnDates = false;
         try {
-            AiInsightsController.getEntityBreakdown('User', 'k', 'PromptTemplate', null, ending, null, null);
+            AiInsightsController.getEntityBreakdown('User', 'k', 'PromptTemplate', null, ending, null, null, null);
         } catch (AuraHandledException e) {
             threwOnDates = true;
         }
         Assert.isTrue(threwOnDates, 'null start date wraps to AuraHandledException');
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_mergesInboundCriteria() {
+        // Phase 5: when the rail is filtering by Model + Feature and the user
+        // drills into a User entity, the panel forwards the rail criteria as
+        // criteriaJson. The controller must merge those into the FilterCriteria
+        // it builds — entity replaces its own dimension, every other dimension
+        // survives intact.
+        StubService stub = installStub();
+        DateTime start = DateTime.now().addDays(-7);
+        DateTime ending = DateTime.now();
+        String criteriaJson = '{"models":["gpt-4o","gpt-5"],"features":["Agentforce"],"userIds":["005000000000999"]}';
+
+        AiInsightsController.getEntityBreakdown(
+            'User',
+            '005000000000001',
+            'PromptTemplate',
+            start,
+            ending,
+            null,
+            null,
+            criteriaJson
+        );
+
+        ExplorerRequest req = stub.lastExplorerRequest;
+        Assert.isNotNull(req, 'service was invoked');
+        FilterCriteria c = req.criteria;
+        Assert.isNotNull(c, 'criteria built');
+
+        // Source entity wins over any inbound user list — drill scopes to one user.
+        Assert.areEqual(1, c.userIds.size(), 'inbound userIds replaced by source User');
+        Assert.areEqual('005000000000001', c.userIds[0]);
+
+        // Other dimensions from the rail are preserved.
+        Assert.areEqual(2, c.models.size(), 'inbound models survive');
+        Assert.areEqual('gpt-4o', c.models[0]);
+        Assert.areEqual(1, c.features.size(), 'inbound features survive');
+        Assert.areEqual('Agentforce', c.features[0]);
+
+        // Date range is sourced from the (start, ending) args, not criteriaJson.
+        Assert.areEqual(start, c.startDate);
+        Assert.areEqual(ending, c.endDate);
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_blankCriteriaJsonIsNoop() {
+        // Empty / blank criteriaJson behaves the same as the legacy call —
+        // criteria gets the entity, nothing else. Guards against regressions
+        // that would crash on the new param being unset.
+        StubService stub = installStub();
+        AiInsightsController.getEntityBreakdown(
+            'Model',
+            'gpt-5',
+            'User',
+            DateTime.now().addDays(-1),
+            DateTime.now(),
+            null,
+            null,
+            ''
+        );
+        FilterCriteria c = stub.lastExplorerRequest.criteria;
+        Assert.areEqual(1, c.models.size());
+        Assert.areEqual('gpt-5', c.models[0]);
+        Assert.isNull(c.userIds, 'no users injected when criteriaJson is blank');
+    }
+
+    @IsTest
+    static void testGetEntityBreakdown_toleratesBadCriteriaJson() {
+        // Bad JSON falls through to "no inbound criteria" rather than throwing —
+        // matches the parseCriteria contract used by runExplorerQuery.
+        StubService stub = installStub();
+        AiInsightsController.getEntityBreakdown(
+            'User',
+            '005000000000001',
+            'Model',
+            DateTime.now().addDays(-1),
+            DateTime.now(),
+            null,
+            null,
+            'not-valid-json'
+        );
+        FilterCriteria c = stub.lastExplorerRequest.criteria;
+        Assert.areEqual(1, c.userIds.size(), 'entity still applied');
+        Assert.areEqual('005000000000001', c.userIds[0]);
     }
 
     @IsTest

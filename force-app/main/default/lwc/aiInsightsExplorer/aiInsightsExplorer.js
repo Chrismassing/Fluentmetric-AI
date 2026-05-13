@@ -247,6 +247,17 @@ export default class AiInsightsExplorer extends LightningElement {
             features: next.features || [],
             appTypes: next.appTypes || []
         };
+        // Optional groupBy hint from a "Pin to Explorer" hand-off. Accept
+        // only values we actually offer in the dropdown so a stale hint
+        // can't put the Explorer into an unrenderable state.
+        if (message.groupBy) {
+            const allowed = GROUP_BY_OPTIONS.some((o) => o.value === message.groupBy);
+            if (allowed) {
+                this.groupBy = message.groupBy;
+                this.hasInteracted = true;
+                this.rebuildColumns();
+            }
+        }
         this.runQuery();
     }
 
@@ -462,9 +473,17 @@ export default class AiInsightsExplorer extends LightningElement {
         if (!entityType) return;
         const panel = this.template.querySelector('c-ai-insights-drill-panel');
         if (panel && typeof panel.open === 'function') {
-            // Filter-aware drill (criteria) returns in Phase 5; the panel
-            // currently scopes only to the entity + date range.
-            panel.open(entityType, groupKey, groupLabel, this.startDate, this.endDate);
+            // Forward the rail's active criteria so the drill stays scoped to
+            // the same slice the Explorer table is showing.
+            const criteriaJson = JSON.stringify(this.criteria || {});
+            panel.open(
+                entityType,
+                groupKey,
+                groupLabel,
+                this.startDate,
+                this.endDate,
+                criteriaJson
+            );
         }
     }
 

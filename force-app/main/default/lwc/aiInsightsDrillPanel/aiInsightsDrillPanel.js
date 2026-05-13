@@ -1,4 +1,6 @@
-import { LightningElement, api, track } from 'lwc';
+import { LightningElement, api, track, wire } from 'lwc';
+import { publish, MessageContext } from 'lightning/messageService';
+import AI_INSIGHTS_FILTERS from '@salesforce/messageChannel/AiInsightsFilters__c';
 import getEntityDetails from '@salesforce/apex/AiInsightsController.getEntityDetails';
 import getEntityBreakdown from '@salesforce/apex/AiInsightsController.getEntityBreakdown';
 import { abbreviateNumber, formatPercent } from './numberFormat';
@@ -56,6 +58,11 @@ export default class AiInsightsDrillPanel extends LightningElement {
     // Date range — common to every frame in the stack.
     @track startDate;
     @track endDate;
+    // Inbound rail criteria (from the parent dashboard's filter rail).
+    // Forwarded to every Apex call so a Model+Feature pre-filter stays in
+    // effect as the user pivots inside the drill panel. Stored as the raw
+    // JSON string the Explorer / Apex layer expects.
+    @track criteriaJson;
 
     // Stack of {type, key, label, breakdown}. Last element is the current view.
     @track stack = [];
@@ -68,16 +75,20 @@ export default class AiInsightsDrillPanel extends LightningElement {
 
     _escapeHandler;
 
+    @wire(MessageContext)
+    messageContext;
+
     // ──────────────────────────────────────────────────────────────────────
     // Public API
     // ──────────────────────────────────────────────────────────────────────
 
     @api
-    async open(entityType, entityKey, entityLabel, startDate, endDate) {
+    async open(entityType, entityKey, entityLabel, startDate, endDate, criteriaJson) {
         const seedStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const seedEnd = new Date().toISOString();
         this.startDate = startDate || seedStart;
         this.endDate = endDate || seedEnd;
+        this.criteriaJson = criteriaJson || null;
 
         // Fresh stack — closing the panel clears prior context.
         this.stack = [
@@ -136,7 +147,7 @@ export default class AiInsightsDrillPanel extends LightningElement {
                     startDate: this.startDate,
                     endDate: this.endDate,
                     recentLimit: SAMPLE_LIMIT,
-                    criteriaJson: null
+                    criteriaJson: this.criteriaJson
                 }),
                 getEntityBreakdown({
                     entityType: frame.type,
@@ -145,7 +156,8 @@ export default class AiInsightsDrillPanel extends LightningElement {
                     startDate: this.startDate,
                     endDate: this.endDate,
                     metric: 'RequestCount',
-                    resultLimit: BREAKDOWN_LIMIT
+                    resultLimit: BREAKDOWN_LIMIT,
+                    criteriaJson: this.criteriaJson
                 }).catch(() => [])
             ]);
             this.details = details || {};
@@ -228,6 +240,70 @@ export default class AiInsightsDrillPanel extends LightningElement {
 
     handleClose() {
         this.close();
+    }
+
+    /**
+     * "Pin to Explorer" hand-off. Builds a FilterCriteria that combines the
+     * inbound rail criteria (already on `criteriaJson`) with the current
+     * frame's source entity, publishes it on AiInsightsFilters along with a
+     * groupBy hint matching the panel's current breakdown dimension, then
+     * fires `openinexplorer` so the host (aiInsightsApp) can switch tabs.
+     *
+     * The Explorer subscribes to AiInsightsFilters and already re-runs on
+     * any external publish, so the criteria + groupBy land in one trip.
+     */
+    handleOpenInExplorer() {
+        const frame = this.currentFrame;
+        if (!frame) return;
+        const inbound = this.parseInboundCriteria();
+        const merged = this.mergeEntityIntoCriteria(inbound, frame.type, frame.key);
+        merged.startDate = this.startDate;
+        merged.endDate = this.endDate;
+
+        // Map the panel's source entity back to the Explorer's groupBy values.
+        // We hand off using the frame's *current breakdown* (most useful: the
+        // user pivoted to "Day" and wants to keep Day in Explorer) — falling
+        // back to the source type when the breakdown is the source itself.
+        const groupBy = frame.breakdown || frame.type;
+
+        publish(this.messageContext, AI_INSIGHTS_FILTERS, {
+            criteriaJson: JSON.stringify(merged),
+            startDate: this.startDate,
+            endDate: this.endDate,
+            groupBy
+        });
+
+        this.dispatchEvent(new CustomEvent('openinexplorer', {
+            detail: { groupBy },
+            bubbles: true,
+            composed: true
+        }));
+        this.close();
+    }
+
+    parseInboundCriteria() {
+        if (!this.criteriaJson) return {};
+        try {
+            const parsed = JSON.parse(this.criteriaJson);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    /**
+     * Layer the source entity onto an existing criteria bag — replaces the
+     * matching dimension (User/PromptTemplate/Model/Feature) with the single
+     * entity key, leaves the other dimensions untouched. Mirrors the Apex
+     * applyEntityToCriteria semantics so the LWC and Apex agree.
+     */
+    mergeEntityIntoCriteria(criteria, entityType, entityKey) {
+        const out = { ...(criteria || {}) };
+        if (entityType === 'User') out.userIds = [entityKey];
+        else if (entityType === 'PromptTemplate') out.promptTemplateDevNames = [entityKey];
+        else if (entityType === 'Model') out.models = [entityKey];
+        else if (entityType === 'Feature') out.features = [entityKey];
+        return out;
     }
 
     handleBackdropClick(event) {
