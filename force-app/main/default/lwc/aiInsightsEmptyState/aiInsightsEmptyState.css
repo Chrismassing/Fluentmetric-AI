@@ -1,0 +1,53 @@
+/*
+ * Skeleton variant — animated shimmer rows used during initial loads so the
+ * dashboard renders structure immediately instead of a bare spinner. Each
+ * row is a grid of placeholder cells; the moving gradient is GPU-friendly
+ * (background-position only) and respects prefers-reduced-motion.
+ */
+
+.fm-skeleton {
+    padding: 0.75rem 0.5rem;
+}
+
+.fm-skeleton__row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.fm-skeleton__row:last-child {
+    border-bottom: none;
+}
+
+.fm-skeleton__cell {
+    display: block;
+    height: 0.75rem;
+    border-radius: 0.25rem;
+    background-color: var(--slds-g-color-neutral-base-90, #e5e5e5);
+    background-image: linear-gradient(
+        90deg,
+        var(--slds-g-color-neutral-base-90, #e5e5e5) 0%,
+        var(--slds-g-color-neutral-base-95, #f3f3f3) 50%,
+        var(--slds-g-color-neutral-base-90, #e5e5e5) 100%
+    );
+    background-size: 200% 100%;
+    background-position: 100% 0;
+    animation: fm-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.fm-skeleton__cell--label { width: 65%; }
+.fm-skeleton__cell--num { width: 45%; }
+
+@keyframes fm-skeleton-shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fm-skeleton__cell {
+        animation: none;
+    }
+}

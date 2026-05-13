@@ -1,4 +1,17 @@
 <template>
+    <template lwc:if={isSkeleton}>
+        <div class="fm-skeleton" role="status" aria-live="polite" aria-label="Loading">
+            <template for:each={skeletonItems} for:item="row">
+                <div key={row.key} class="fm-skeleton__row">
+                    <span class="fm-skeleton__cell fm-skeleton__cell--label"></span>
+                    <span class="fm-skeleton__cell fm-skeleton__cell--num"></span>
+                    <span class="fm-skeleton__cell fm-skeleton__cell--num"></span>
+                    <span class="fm-skeleton__cell fm-skeleton__cell--num"></span>
+                </div>
+            </template>
+        </div>
+    </template>
+    <template lwc:if={isDefault}>
     <div class="slds-illustration slds-illustration_small slds-p-vertical_large slds-text-align_center" role="status" aria-live="polite">
         <div class="slds-m-bottom_small">
             <lightning-icon icon-name={iconName} size="large" alternative-text={title} variant={iconVariant}></lightning-icon>
@@ -33,4 +46,5 @@
             </div>
         </template>
     </div>
+    </template>
 </template>

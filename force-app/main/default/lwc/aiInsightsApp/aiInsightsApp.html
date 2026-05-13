@@ -13,10 +13,17 @@
                     <c-ai-insights-date-filter></c-ai-insights-date-filter>
                 </div>
             </div>
+            <!-- Active filter pills — globally visible so users see what is
+                 slicing the view from any tab, not just Explorer. The pills
+                 component renders nothing when no filter is active, so the
+                 header stays compact. -->
+            <div class="slds-m-top_x-small">
+                <c-ai-insights-filter-pills></c-ai-insights-filter-pills>
+            </div>
         </header>
 
-        <!-- Main tabset — full width. The filter rail and pills only appear
-             on the Explorer tab since filters only apply there today. -->
+        <!-- Main tabset — full width. The filter rail still lives inside the
+             Explorer tab; only the pills are hoisted globally. -->
         <div class="slds-card fm-app-tabs">
             <lightning-tabset variant="standard" class="fm-tabset">
                 <lightning-tab
@@ -59,10 +66,7 @@
                     title={tooltips.tabExplorer}>
                     <div class="slds-grid slds-gutters_small slds-wrap slds-p-top_small">
                         <main class={mainColumnClass}>
-                            <c-ai-insights-filter-pills></c-ai-insights-filter-pills>
-                            <div class="slds-m-top_small">
-                                <c-ai-insights-explorer></c-ai-insights-explorer>
-                            </div>
+                            <c-ai-insights-explorer></c-ai-insights-explorer>
                         </main>
                         <aside class={railColumnClass}>
                             <div class="slds-box slds-box_x-small slds-theme_default">
