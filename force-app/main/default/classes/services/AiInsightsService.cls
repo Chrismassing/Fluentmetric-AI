@@ -144,6 +144,29 @@ public with sharing virtual class AiInsightsService {
             out.agentforceFlexCredits = actionFc;
             out.agentforceUsd = actionDiscounted.setScale(4);
             out.costConfidence = weakerConfidence(rolledConfidence, actionConfidence);
+            out.costSource = CostCalculatorService.SOURCE_ESTIMATE;
+
+            // Wallet-first override: when Digital Wallet is provisioned and
+            // `Enable_Wallet_Costs__c` is on, replace the headline FC with the
+            // Wallet actual. Wallet's `unitsconsumed__c` already includes both
+            // LLM and Agentforce action consumption, so we DO NOT add the
+            // Agentforce action FC on top — the breakdown stays in the
+            // dedicated `agentforceFlexCredits` field for reference, but the
+            // headline total comes purely from Wallet.
+            if (cost.isWalletPreferred()) {
+                CostCalculatorService.CostResult wallet = cost.costForWindow(filter.startDate, filter.endDate, null);
+                if (
+                    wallet != null &&
+                    wallet.confidence == CostCalculatorService.CONFIDENCE_ACTUAL &&
+                    wallet.flexCredits > 0
+                ) {
+                    out.estimatedFlexCredits = wallet.flexCredits;
+                    out.estimatedBaseUsd = wallet.baseUsd == null ? 0 : wallet.baseUsd;
+                    out.estimatedUsdAfterDiscount = wallet.discountedUsd == null ? 0 : wallet.discountedUsd;
+                    out.costConfidence = CostCalculatorService.CONFIDENCE_ACTUAL;
+                    out.costSource = CostCalculatorService.SOURCE_WALLET;
+                }
+            }
         } catch (Exception costEx) {
             // Never break the dashboard on cost errors — DTO already has zeros from constructor.
         }

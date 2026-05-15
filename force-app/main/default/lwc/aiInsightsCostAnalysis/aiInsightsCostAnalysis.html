@@ -5,8 +5,28 @@
         </template>
 
         <div class="slds-p-horizontal_medium slds-p-bottom_medium">
-            <!-- Honesty banner. Persistent per user until dismissed. -->
-            <template lwc:if={showBanner}>
+            <!-- Wallet-actuals callout. Shown when costSource === ACTUAL_WALLET. -->
+            <template lwc:if={showWalletCallout}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_success slds-m-bottom_medium fm-cost-banner fm-cost-banner_actual" role="status">
+                    <div class="slds-grid slds-grid_vertical-align-start slds-gutters_small">
+                        <div class="slds-col slds-no-flex">
+                            <lightning-icon icon-name="utility:check" size="small" alternative-text="Wallet-verified"></lightning-icon>
+                        </div>
+                        <div class="slds-col">
+                            <p class="slds-text-body_regular">
+                                <strong>Actuals from Salesforce Digital Wallet.</strong>
+                                These Flex Credits are read directly from <code>TenantEnrichedUsageEvent</code> —
+                                the same data Salesforce uses to bill your org. The headline figure matches what your
+                                Consumption Analytics dashboard shows for the selected date range. Wallet attributes
+                                consumption by agent, action, feature, and (in this org) Salesforce User Id.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Estimates disclosure. Persistent per user until dismissed. Hidden when Wallet is authoritative. -->
+            <template lwc:if={showEstimateBanner}>
                 <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_warning slds-m-bottom_medium fm-cost-banner" role="status">
                     <div class="slds-grid slds-grid_vertical-align-start slds-gutters_small">
                         <div class="slds-col slds-no-flex">
@@ -16,8 +36,9 @@
                             <p class="slds-text-body_regular">
                                 <strong>Estimates, not billing.</strong>
                                 These Flex Credit and USD figures are calculated from Salesforce public tier pricing ×
-                                observed token counts. Actual billing lives in <em>Setup → Flex Credit Usage</em>.
-                                Use this panel for directional analysis only.
+                                observed token counts. For audit-grade actuals, install the Consumption Tagging app from
+                                <em>Setup → Digital Wallet</em> in a Wallet-enabled production org. Use this panel for
+                                directional analysis only.
                             </p>
                         </div>
                         <div class="slds-col slds-no-flex">

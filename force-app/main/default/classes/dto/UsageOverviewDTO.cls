@@ -42,7 +42,10 @@ public with sharing class UsageOverviewDTO {
     public Integer topFeatureRequestCount;
 
     // Cost analytics — populated by CostCalculatorService + STDM probe.
-    // `costConfidence`: HIGH / ESTIMATED / FALLBACK / NOT_COSTED.
+    // `costConfidence`: ACTUAL / HIGH / ESTIMATED / FALLBACK / NOT_COSTED.
+    // `costSource`: ACTUAL_WALLET / ESTIMATED_TIER / NONE — distinguishes Wallet
+    //   actuals from FluentMetric tier-rate estimates so the UI can render the
+    //   correct label and disclaimer.
     // `agentforceActionCount`: non-zero only when STDM is available.
     // `agentforceFlexCredits`: action FC (flat 20 × invocations) separate from LLM FC.
     @AuraEnabled
@@ -53,6 +56,8 @@ public with sharing class UsageOverviewDTO {
     public Decimal estimatedUsdAfterDiscount;
     @AuraEnabled
     public String costConfidence;
+    @AuraEnabled
+    public String costSource;
     @AuraEnabled
     public Integer agentforceActionCount;
     @AuraEnabled
@@ -73,6 +78,7 @@ public with sharing class UsageOverviewDTO {
         this.estimatedBaseUsd = 0;
         this.estimatedUsdAfterDiscount = 0;
         this.costConfidence = 'HIGH';
+        this.costSource = 'ESTIMATED_TIER';
         this.agentforceActionCount = 0;
         this.agentforceFlexCredits = 0L;
         this.agentforceUsd = 0;

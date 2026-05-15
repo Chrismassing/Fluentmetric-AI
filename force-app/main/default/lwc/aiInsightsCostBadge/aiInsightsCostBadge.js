@@ -2,6 +2,7 @@ import { LightningElement, api } from 'lwc';
 import { TOOLTIPS } from 'c/aiInsightsTooltips';
 
 const LABELS = {
+    ACTUAL: 'Actual — Salesforce Wallet',
     HIGH: 'High confidence',
     ESTIMATED: 'Estimated',
     FALLBACK: 'Fallback rate',
@@ -9,6 +10,7 @@ const LABELS = {
 };
 
 const VARIANTS = {
+    ACTUAL: 'slds-theme_success fm-cost-badge_actual',
     HIGH: 'slds-theme_success',
     ESTIMATED: 'slds-theme_warning',
     FALLBACK: 'slds-theme_warning',

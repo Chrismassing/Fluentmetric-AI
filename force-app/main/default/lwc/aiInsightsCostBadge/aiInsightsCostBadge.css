@@ -10,3 +10,17 @@
     padding: 0.125rem 0.375rem;
     margin-left: 0.25rem;
 }
+
+/* Wallet-actuals get a deeper saturation + a leading dot so they stand
+   out from the generic HIGH-confidence success badge. */
+.fm-cost-badge_actual {
+    background-color: var(--slds-g-color-success-base-50, var(--slds-g-color-success, #2e844a));
+    color: var(--slds-g-color-on-accent-1, #ffffff);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.fm-cost-badge_actual::before {
+    content: '\25CF';
+    margin-right: 0.25rem;
+    color: var(--slds-g-color-on-accent-1, #ffffff);
+}

@@ -24,10 +24,13 @@ Packaged two ways for shareability per edition:
 - `AiInsightsDAO` — all DMO `Database.query()` calls, interface-backed for mockability
 - `UserResolverService` — User/Prompt name resolution with Platform Cache + graceful degradation
 - `AiInsightsDateRange` LMS channel — one publisher (date filter), N subscribers (dashboards)
+- `CostCalculatorService` — tier-based Flex Credit estimator with **Wallet-first override**: when `Enable_Wallet_Costs__c` is on AND `AiWalletDAO.isWalletAvailable()` returns true (Wallet-enabled prod org with Consumption Tagging app installed), `costForWindow()` returns Wallet actuals tagged `confidence=ACTUAL` / `source=ACTUAL_WALLET`. Otherwise falls back to the tier-rate estimate. Confidence/source are surfaced to the UI as visible badges (`ACTUAL` / `HIGH` / `ESTIMATED` / `FALLBACK` / `NOT_COSTED`). Verified end-to-end against `cvk-dev` 2026-05-15.
+- `AiWalletDAO` (+ `IAiWalletDAO` + `AiWalletDAOMock`) — isolates `TenantEnrichedUsageEvent__dll` queries. Defends every method with try/catch + a transaction-scoped availability cache so non-Wallet orgs never throw. Schema reference in [Documents/WALLET-LIVE-SCHEMA.md](Documents/WALLET-LIVE-SCHEMA.md).
 
 ## Key Design Docs (read before coding)
 
 - **[Documents/LIVE-SCHEMA.md](Documents/LIVE-SCHEMA.md)** — verified DMO schema from `cvk-dev`. **This overrides DATA-MODEL.md where they disagree.** Live schema uses camelCase fields (`userId__c`, `timestamp__c`), and prompt template names are directly on the Request row (no tag join needed).
+- **[Documents/WALLET-LIVE-SCHEMA.md](Documents/WALLET-LIVE-SCHEMA.md)** — verified Digital Wallet (`TenantEnrichedUsageEvent__dll`) schema. DLO suffix is `__dll` (not `__dlm`); field names are lowercase + `__c` (not camelCase like the GenAI DMOs).
 - [Documents/APEX-SERVICES.md](Documents/APEX-SERVICES.md) — class structure, method signatures, DTOs
 - [Documents/COMPONENTS.md](Documents/COMPONENTS.md) — LWC specifications, layout, behavior
 - [Documents/DEPLOYMENT.md](Documents/DEPLOYMENT.md) — project structure, what ships in the package

@@ -32,10 +32,16 @@ public with sharing virtual class CostCalculatorService {
     private static final Decimal ZERO = 0;
 
     // Confidence bands — surfaced to the UI as badges.
+    public static final String CONFIDENCE_ACTUAL = 'ACTUAL';
     public static final String CONFIDENCE_HIGH = 'HIGH';
     public static final String CONFIDENCE_ESTIMATED = 'ESTIMATED';
     public static final String CONFIDENCE_FALLBACK = 'FALLBACK';
     public static final String CONFIDENCE_NOT_COSTED = 'NOT_COSTED';
+
+    // Cost source — distinguishes Wallet-actuals from FluentMetric estimates.
+    public static final String SOURCE_WALLET = 'ACTUAL_WALLET';
+    public static final String SOURCE_ESTIMATE = 'ESTIMATED_TIER';
+    public static final String SOURCE_NONE = 'NONE';
 
     // Tier identifiers (must match FluentMetric_Rate_Card__mdt.Tier__c picklist).
     private static final String TIER_BASIC = 'Basic';
@@ -58,6 +64,18 @@ public with sharing virtual class CostCalculatorService {
     @TestVisible
     private static FluentMetric_Cost_Settings__c settingsCache;
 
+    /** Wallet DAO — injected via constructor for testability. Defaults to live DAO. */
+    @TestVisible
+    protected IAiWalletDAO walletDao;
+
+    public CostCalculatorService() {
+        this(new AiWalletDAO());
+    }
+
+    public CostCalculatorService(IAiWalletDAO walletDao) {
+        this.walletDao = walletDao == null ? new AiWalletDAO() : walletDao;
+    }
+
     /** Result DTO consumed by LWCs and the AiInsightsService callers. */
     public class CostResult {
         @AuraEnabled
@@ -70,6 +88,9 @@ public with sharing virtual class CostCalculatorService {
         public Boolean usedFallback;
         @AuraEnabled
         public String confidence;
+        /** ACTUAL_WALLET when sourced from TenantEnrichedUsageEvent, ESTIMATED_TIER for FluentMetric estimates, NONE for empty. */
+        @AuraEnabled
+        public String source;
 
         public CostResult() {
             this.flexCredits = 0L;
@@ -77,6 +98,7 @@ public with sharing virtual class CostCalculatorService {
             this.discountedUsd = 0;
             this.usedFallback = false;
             this.confidence = CONFIDENCE_HIGH;
+            this.source = SOURCE_NONE;
         }
 
         public CostResult(Long flexCredits, Decimal baseUsd, Decimal discountedUsd, Boolean usedFallback) {
@@ -95,6 +117,7 @@ public with sharing virtual class CostCalculatorService {
             this.discountedUsd = discountedUsd == null ? 0 : discountedUsd;
             this.usedFallback = usedFallback == true;
             this.confidence = String.isBlank(confidence) ? CONFIDENCE_HIGH : confidence;
+            this.source = (this.confidence == CONFIDENCE_ACTUAL) ? SOURCE_WALLET : SOURCE_ESTIMATE;
         }
     }
 
@@ -173,6 +196,85 @@ public with sharing virtual class CostCalculatorService {
      */
     public virtual CostResult notCosted() {
         return new CostResult(0L, 0, 0, false, CONFIDENCE_NOT_COSTED);
+    }
+
+    /**
+     * Build a CostResult from a known Wallet-actual Flex Credit total.
+     * Marks the result as `ACTUAL` confidence and `ACTUAL_WALLET` source.
+     * USD is derived using the standard rate × discount math; Wallet doesn't
+     * expose USD on the DLO so we always compute it ourselves.
+     */
+    public virtual CostResult costFromWallet(Decimal walletFlexCredits) {
+        if (walletFlexCredits == null || walletFlexCredits <= 0) {
+            CostResult zero = new CostResult();
+            zero.confidence = CONFIDENCE_ACTUAL;
+            zero.source = SOURCE_WALLET;
+            return zero;
+        }
+        try {
+            Long fc = walletFlexCredits.longValue();
+            Decimal baseUsd = (walletFlexCredits * flexCreditUsdRate()).setScale(4);
+            CostResult cr = new CostResult(fc, baseUsd, applyDiscount(baseUsd), false, CONFIDENCE_ACTUAL);
+            cr.source = SOURCE_WALLET;
+            return cr;
+        } catch (Exception ex) {
+            return new CostResult();
+        }
+    }
+
+    /**
+     * Master Wallet-first cost lookup for a date window.
+     *
+     * Order of operations:
+     *   1. If `Enable_Cost_Metrics__c` is off → return zero result (cost UI hidden).
+     *   2. If `Enable_Wallet_Costs__c` is on AND `walletDao.isWalletAvailable()` is true:
+     *      query Wallet `getTotalFlexCredits(...)`. If the result is non-null,
+     *      wrap it as `ACTUAL_WALLET` and return.
+     *   3. Otherwise (Wallet disabled, unavailable, or null total): fall back to
+     *      the FluentMetric tier-rate estimate computed from the supplied request
+     *      list — same as today's behavior.
+     *
+     * Callers pass the same request list they'd give to `costForRequests` — this
+     * method is a drop-in upgrade that opportunistically uses Wallet when it
+     * can.
+     */
+    public virtual CostResult costForWindow(
+        DateTime startDate,
+        DateTime endDate,
+        List<SObject> estimateFallbackRequests
+    ) {
+        if (!isCostMetricsEnabled()) {
+            return new CostResult();
+        }
+        if (isWalletPreferred()) {
+            try {
+                Decimal walletTotal = walletDao.getTotalFlexCredits(startDate, endDate);
+                if (walletTotal != null && walletTotal > 0) {
+                    return costFromWallet(walletTotal);
+                }
+                // Wallet is available but returned 0 (no rows yet) — still fall
+                // back to estimate so the UI shows something during ramp-up.
+            } catch (Exception ignored) {
+                // Wallet probe / total query failed — silently fall back.
+            }
+        }
+        return costForRequests(estimateFallbackRequests);
+    }
+
+    /**
+     * True when both `Enable_Wallet_Costs__c` and `walletDao.isWalletAvailable()`
+     * resolve to true. Cached per-transaction by the underlying DAO.
+     */
+    public virtual Boolean isWalletPreferred() {
+        try {
+            FluentMetric_Cost_Settings__c s = getSettings();
+            if (s == null || s.Enable_Wallet_Costs__c == false) {
+                return false;
+            }
+            return walletDao != null && walletDao.isWalletAvailable();
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     /**

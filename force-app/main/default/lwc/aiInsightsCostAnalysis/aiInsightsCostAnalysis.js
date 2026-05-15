@@ -176,6 +176,28 @@ export default class AiInsightsCostAnalysis extends LightningElement {
         return (this.overview && this.overview.costConfidence) || 'HIGH';
     }
 
+    get costSource() {
+        return (this.overview && this.overview.costSource) || 'ESTIMATED_TIER';
+    }
+
+    get isWalletActual() {
+        return this.costSource === 'ACTUAL_WALLET';
+    }
+
+    /**
+     * Toggles the legacy "Estimates only" disclosure banner. When Wallet is
+     * authoritative, the disclosure no longer applies — the figure is the
+     * billed actual — so we hide that banner and show the Wallet callout
+     * instead.
+     */
+    get showEstimateBanner() {
+        return this.showBanner && !this.isWalletActual;
+    }
+
+    get showWalletCallout() {
+        return this.costMetricsEnabled && this.hasLoadedOnce && this.isWalletActual;
+    }
+
     get agentforceUsdDisplay() {
         if (!this.overview) return '—';
         const v = Number(this.overview.agentforceUsd || 0);

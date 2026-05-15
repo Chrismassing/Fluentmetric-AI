@@ -262,6 +262,11 @@ export const TOOLTIPS = {
 
     // ─── Cost confidence badges ──────────────────────────────────────────
     costConfidence: {
+        ACTUAL:
+            'Actual cost from Salesforce Digital Wallet. These Flex Credits are read directly from the ' +
+            'TenantEnrichedUsageEvent Data Lake Object — the same data Salesforce uses to bill you. ' +
+            'No estimation; the figure matches what your org\'s Consumption Analytics dashboard shows. ' +
+            'Wallet data is only available in Wallet-enabled production orgs with the Consumption Tagging app installed.',
         HIGH:
             'High confidence. The model was matched exactly to an entry in FluentMetric_Rate_Card__mdt, ' +
             'the correct tier-based Flex Credit rate was applied, and (for Agentforce traffic) STDM ' +

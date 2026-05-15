@@ -106,7 +106,8 @@ private class AiInsightsControllerTest {
             String entityType,
             String entityKey,
             DateRangeFilter f,
-            Integer recentLimit
+            Integer recentLimit,
+            FilterCriteria criteria
         ) {
             entityDetailsCalls++;
             lastEntityType = entityType;

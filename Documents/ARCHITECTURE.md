@@ -89,6 +89,27 @@ Pure data access — SOQL queries against Data Cloud DMOs. This layer:
 - Handles SOQL-on-DMO quirks (field availability, query limitations)
 - If a query hits DMO SOQL limitations, falls back to Data Cloud Connect REST API
 
+### Layer 4c: AiWalletDAO.cls (Digital Wallet Data Access)
+
+Sibling to `AiInsightsDAO`, isolated to Salesforce Digital Wallet's Consumption
+Tagging objects (`TenantEnrichedUsageEvent__dll` and the Consumption Insights
+DMO/SDM). This layer:
+- Probes availability via `isWalletAvailable()` — every method short-circuits
+  to empty/null when the DLO is missing (sandbox / scratch / non-Wallet org)
+- Centralises every Wallet field name as a `@TestVisible private static final`
+  constant so a future schema change touches one block
+- Aggregates by user, prompt (resource), feature, usage type, and the
+  JSON-encoded `resourcetags__c` custom-tag column
+- Never throws — every Wallet query is wrapped in try/catch
+
+`CostCalculatorService` uses this DAO via constructor injection; production
+uses the live `AiWalletDAO`, tests inject `AiWalletDAOMock`. When
+`Enable_Wallet_Costs__c` is true AND `isWalletAvailable() == true`, the
+service treats Wallet as authoritative and renders headline cost figures with
+the **`ACTUAL`** confidence badge. Otherwise it falls back to the existing
+tier-rate estimate. See `Documents/WALLET-LIVE-SCHEMA.md` for the verified
+schema and the prod-only constraint disclaimer.
+
 ### Layer 4b: UserResolverService.cls (Reference Data)
 
 Resolves IDs and developer names to human-readable values:

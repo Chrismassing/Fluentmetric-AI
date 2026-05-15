@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Enable_Wallet_Costs__c</fullName>
+    <defaultValue>true</defaultValue>
+    <description>When true and the Consumption Tagging app is installed in this org, FluentMetric AI prefers Salesforce Digital Wallet (TenantEnrichedUsageEvent DLO) as the source of truth for Flex Credits. When false or when Wallet data is unavailable, FluentMetric AI falls back to its tier-rate estimate. Wallet data only exists in Wallet-enabled production orgs — sandboxes, scratch orgs, and Data Cloud One companion orgs cannot host this data.</description>
+    <inlineHelpText>Prefer actual Flex Credits from Salesforce Digital Wallet over FluentMetric AI's estimate when both are available. Wallet requires a Wallet-enabled production org with the Consumption Tagging app installed.</inlineHelpText>
+    <label>Enable Wallet Costs</label>
+    <type>Checkbox</type>
+</CustomField>

@@ -68,6 +68,18 @@
         <apexClass>EntityDetailsDTO</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>AiWalletDAO</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>IAiWalletDAO</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>WalletAggregateDTO</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <objectPermissions>
         <object>FluentMetric_Cost_Settings__c</object>
         <allowRead>true</allowRead>
