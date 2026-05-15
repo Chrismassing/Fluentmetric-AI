@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlexiPage xmlns="http://soap.sforce.com/2006/04/metadata">
+    <masterLabel>FluentMetric AI Tableau Next Home</masterLabel>
+    <description>Home page for the FluentMetric AI for Tableau Next edition. Hosts the GenAI snapshot tile, the Tableau Next launcher, and the agent chat panel.</description>
+    <type>AppPage</type>
+    <template>
+        <name>flexipage:defaultAppHomeTemplate</name>
+    </template>
+    <flexiPageRegions>
+        <name>main</name>
+        <type>Region</type>
+        <itemInstances>
+            <componentInstance>
+                <componentName>c:fmTableauKpiTile</componentName>
+                <identifier>fmTableauKpiTile</identifier>
+                <componentInstanceProperties>
+                    <name>title</name>
+                    <value>GenAI Snapshot</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>windowDays</name>
+                    <value>30</value>
+                </componentInstanceProperties>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
+                <componentName>c:fmTableauNextLauncher</componentName>
+                <identifier>fmTableauNextLauncher</identifier>
+                <componentInstanceProperties>
+                    <name>title</name>
+                    <value>Explore in Tableau Next</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>subtitle</name>
+                    <value>Drag-drop pivot freedom over your GenAI Audit data.</value>
+                </componentInstanceProperties>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
+                <componentName>c:fmTableauAgentChat</componentName>
+                <identifier>fmTableauAgentChat</identifier>
+                <componentInstanceProperties>
+                    <name>agentApiName</name>
+                    <value>FluentMetric_Tableau_Analyst</value>
+                </componentInstanceProperties>
+            </componentInstance>
+        </itemInstances>
+    </flexiPageRegions>
+</FlexiPage>

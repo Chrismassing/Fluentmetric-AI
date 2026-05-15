@@ -2,10 +2,17 @@
 
 ## What This Project Is
 
-A Salesforce-native Lightning app that makes Einstein Generative AI Audit & Feedback DMO data **humanly readable** — resolving User IDs to names, prompt developer names to labels, pre-joining the 9+ Data Cloud DMOs, and presenting curated dashboards + a dynamic Explorer for admins, prompt engineers, and AI product owners.
+A Salesforce-native dashboard app that makes Einstein Generative AI Audit & Feedback DMO data **humanly readable** — resolving User IDs to names, prompt developer names to labels, pre-joining the 9+ Data Cloud DMOs, and presenting curated dashboards for admins, prompt engineers, and AI product owners.
 
-Packaged two ways for shareability:
-1. **Source tree** in this git repo — recipients run `sf project deploy start --source-dir force-app --target-org <theirs>`
+**Two editions ship from this repo as separate unlocked packages — see [Documents/EDITIONS.md](Documents/EDITIONS.md):**
+
+1. **Lightning Edition** (`force-app/`) — 19 native LWCs over a 4-layer Apex stack. **No Tableau license required.** This is the original product.
+2. **Tableau Next Edition** (`force-app-tableau/`) — Lightning App Page entry (KPI tile, Tableau Next launcher, agent chat) plus a Tableau Next workspace (`AnalyticsWorkspace`) and a `FluentMetric_Tableau_Analyst` Agentforce agent backed by three Apex invocable actions. **Targets Tableau Next on Salesforce** (the Salesforce-native analytics product) — NOT Tableau Cloud. No JWT, no REST callouts. Requires Tableau Next + Agentforce.
+
+The two editions share metadata at the Apex layer: the Tableau Next edition's Apex (`FmTableauNextController`, `GetUsageOverviewAction`, `GetUsageByUserAction`, `GetUsageByPromptAction`) **delegates to `AiInsightsService`** from the Lightning edition. Lightning edition must be deployed first (or both deployed together). Both editions can co-exist in the same org and are governed by separate Permission Sets.
+
+Packaged two ways for shareability per edition:
+1. **Source tree** — recipients run `sf project deploy start --source-dir force-app[--tableau] --target-org <theirs>`
 2. **Unlocked Package (2GP)** from `cvk-dev` DevHub — recipients get a one-click install URL
 
 ## Architecture
@@ -40,20 +47,33 @@ Packaged two ways for shareability:
 ## File Organization
 
 ```
+sfdx-project.json                          # Two packageDirectories — both editions
+force-app/                                 # Lightning Edition (default)
 force-app/main/default/classes/
    controllers/  — @AuraEnabled controllers
    services/     — Business logic + UserResolver
    dao/          — DMO SOQL (interface-backed)
    dto/          — @AuraEnabled data transfer objects
    tests/        — Mock-based tests
-force-app/main/default/lwc/               — 11 LWC components (10 per docs + aiInsightsExplorer)
-force-app/main/default/applications/      — FluentMetric_AI Lightning App
-force-app/main/default/tabs/              — Custom tab
-force-app/main/default/flexipages/        — App Page layout
-force-app/main/default/messageChannels/   — LMS channel
-force-app/main/default/permissionsets/    — FluentMetric_AI_User
-force-app/main/default/cachePartitions/   — FluentMetric_AI org partition
-force-app/main/default/labels/            — Custom Labels for UI strings
+force-app/main/default/lwc/                — 19 LWC components
+force-app/main/default/applications/       — FluentMetric_AI Lightning App
+force-app/main/default/tabs/               — Custom tab
+force-app/main/default/flexipages/         — App Page layout
+force-app/main/default/messageChannels/    — LMS channel
+force-app/main/default/permissionsets/     — FluentMetric_AI_User
+force-app/main/default/cachePartitions/    — FluentMetric_AI org partition
+force-app/main/default/labels/             — Custom Labels for UI strings
+
+force-app-tableau/                         # Tableau Next Edition (Salesforce-native analytics)
+force-app-tableau/main/default/classes/    — FmTableauNextController + 3 agent invocable actions (delegate to AiInsightsService) + tests
+force-app-tableau/main/default/lwc/        — fmTableauKpiTile, fmTableauNextLauncher, fmTableauAgentChat
+force-app-tableau/main/default/applications/ — FluentMetric_AI_Tableau Lightning App
+force-app-tableau/main/default/tabs/       — FluentMetric_AI_Tableau tab
+force-app-tableau/main/default/flexipages/ — FluentMetric_AI_Tableau_Home App Page
+force-app-tableau/main/default/permissionsets/ — FluentMetric_AI_Tableau_User
+force-app-tableau/main/default/analyticsWorkspaces/ — FluentMetric_AI_Workspace (uawork) referencing the FluentMetric_AI semantic model
+force-app-tableau/main/default/aiAuthoringBundles/FluentMetric_Tableau_Analyst/ — agent (.agent file, published via sf agent publish)
+force-app-tableau/main/default/labels/     — FM_TBL_* labels (incl. launcher deep-link path)
 ```
 
 ## Connected Org
@@ -86,10 +106,16 @@ Invoke with `Skill` tool by exact name. These are authoritative for their domain
 | `sf-data` | Test data, bulk ops |
 | `sf-docs` | Fetching official Salesforce help articles cleanly |
 | `sf-ai-agentforce-observability` | **v2 only** — Session Tracing / STDM integration |
+| `developing-agentforce` | Tableau Edition — `.agent` authoring + lifecycle for FluentMetric_Tableau_Analyst |
+| `sf-ai-agentscript` | Tableau Edition — Agent Script DSL validation |
+| `sf-connected-apps` | Tableau Edition — JWT Connected App for Tableau callouts |
+| `sf-integration` | Tableau Edition — Named Credential + External Credential authoring |
 
 ### MCP Servers
 
 `mcp-adaptor` is already configured in `~/.claude/settings.json`. Use `mcp__mcp-adaptor__doc_search` for Salesforce-internal doc lookups during the build. The `@salesforce/mcp` server from the SF CLI repo is intentionally NOT installed — direct `sf` CLI access via Bash provides the same capabilities.
+
+**`@tableau/mcp-server` (dev-time only, Tableau Edition)** — Configure in `~/.claude/settings.json` (NOT committed to repo) when authoring Tableau workbooks. Requires `SERVER`, `SITE_NAME`, `PAT_NAME`, `PAT_VALUE` env vars and Node 22.7.5+. Provides read-only tools (`list-datasources`, `query-datasource`, `get-view-image`, `list-all-pulse-metric-definitions`, `generate-pulse-insight-brief`) for accelerated workbook authoring + Pulse insight validation. **Not deployed to customers** — the runtime agent uses Apex Invocable Actions over Tableau REST instead, since Agentforce can't host Node.js MCP processes.
 
 ### External Resources (Evaluated and Skipped)
 

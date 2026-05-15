@@ -6,11 +6,18 @@
       "package": "FluentMetric AI",
       "versionName": "Version 1.0",
       "versionNumber": "1.0.0.NEXT"
+    },
+    {
+      "path": "force-app-tableau",
+      "default": false,
+      "package": "FluentMetric AI for Tableau",
+      "versionName": "Version 1.0",
+      "versionNumber": "1.0.0.NEXT"
     }
   ],
   "name": "fluentmetric-ai",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "62.0",
-  "__comment": "agentforce org is on API 66.0 but package is pinned to 62.0 for broad compatibility across target orgs"
+  "__comment": "Two editions: force-app (default, Lightning) and force-app-tableau (Tableau Next, depends on Lightning's AiInsightsService). To publish the Tableau Analyst agent, temporarily flip default:true onto force-app-tableau, run `sf agent publish authoring-bundle`, then flip back."
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>FluentMetric Tableau KPI Tile</masterLabel>
+    <description>Inline KPI summary card for the Tableau Next edition. Reads top-of-funnel metrics from Data Cloud DMOs via FmTableauNextController.getKpiSummary.</description>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__HomePage</target>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__AppPage,lightning__HomePage,lightning__RecordPage">
+            <property name="title" type="String" label="Card Title" default="GenAI Snapshot"/>
+            <property name="windowDays" type="Integer" label="Lookback Window (days)" default="30"/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

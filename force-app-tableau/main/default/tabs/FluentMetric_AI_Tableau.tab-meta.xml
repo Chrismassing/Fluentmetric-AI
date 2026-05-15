@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <flexiPage>FluentMetric_AI_Tableau_Home</flexiPage>
+    <label>FluentMetric AI (Tableau Next)</label>
+    <description>FluentMetric AI for Tableau Next dashboard home.</description>
+    <motif>Custom17: Flask</motif>
+</CustomTab>

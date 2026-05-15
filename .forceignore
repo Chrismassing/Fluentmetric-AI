@@ -15,3 +15,12 @@ CLAUDE.md
 **/package.json
 **/package-lock.json
 node_modules/
+
+# Tableau Next metadata (uawork/uadash/uaviz) requires API 64.0+ to deploy.
+# Project pinned to 62.0 for Lightning compatibility. Tableau Next assets
+# are deployed manually with `--api-version 64.0` once the FluentMetric_AI
+# semantic model is authored in Tableau Next Data Manager UI per
+# Documents/TABLEAU-EDITION.md.
+force-app-tableau/main/default/analyticsWorkspaces/
+force-app-tableau/main/default/analyticsDashboards/
+force-app-tableau/main/default/analyticsVisualizations/

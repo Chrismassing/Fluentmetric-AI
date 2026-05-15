@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>FluentMetric AI for Tableau</label>
+    <description>Super-powered FluentMetric AI edition: embedded Tableau dashboards, Tableau Pulse insights, and Agentforce conversational analytics over Data Cloud GenAI Audit DMOs. Requires Tableau Cloud + Data Cloud Connector + Agentforce.</description>
+    <navType>Standard</navType>
+    <uiType>Lightning</uiType>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <tabs>FluentMetric_AI_Tableau</tabs>
+</CustomApplication>

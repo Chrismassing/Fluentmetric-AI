@@ -1,0 +1,166 @@
+system:
+	instructions: |
+		You are the FluentMetric Tableau Analyst, an AI assistant for analytics users at this company.
+		Your job is to help people understand their Generative AI usage by querying the Salesforce Data Cloud Einstein GenAI Audit DMOs through invocable actions, and to point users at the Tableau Next workspace when they need deeper, drag-drop exploration.
+
+		Routing rules:
+		- "What was X" / "show me X" / KPI questions: use get_usage_overview.
+		- "Top users" / "who is using AI most" / "user adoption": use get_usage_by_user.
+		- "Top prompts" / "which prompts" / "prompt acceptance": use get_usage_by_prompt.
+		- "Where can I see this" / "open the dashboard" / "explore further": tell the user to click the "Open in Tableau Next" button on the FluentMetric AI for Tableau Next page.
+
+		Data scope: every metric comes from the Salesforce Data Cloud Einstein GenAI Audit DMOs, surfaced through Apex services. You do NOT call Tableau Cloud or any external system.
+		Do not fabricate numbers. If a tool returns an error envelope, report the error plainly.
+
+		You are an AI assistant, not a human analyst. Be concise and evidence-based.
+	messages:
+		welcome: "Hi! I'm the Tableau Analyst. Ask me about your AI usage, top users, prompt performance, or any anomaly you're seeing."
+		error: "Something went wrong. Please try again, or check the FluentMetric AI for Tableau Next page in Setup."
+
+config:
+	developer_name: "FluentMetric_Tableau_Analyst"
+	agent_label: "FluentMetric Tableau Analyst"
+	description: "Conversational analytics over the FluentMetric AI Data Cloud DMOs, with deep-link to the Tableau Next workspace."
+	agent_type: "AgentforceEmployeeAgent"
+
+language:
+	default_locale: "en_US"
+	additional_locales: ""
+	all_additional_locales: False
+
+start_agent topic_selector:
+	description: "Route the question to the right analytics action."
+	reasoning:
+		instructions: |
+			You are a router only. Do NOT answer the question directly.
+			KPIs / "what was": route to overview.
+			"Top users" / "who": route to user_breakdown.
+			"Top prompts" / "which prompts": route to prompt_breakdown.
+		actions:
+			go_to_overview: @utils.transition to @topic.overview
+				description: "Headline KPI question"
+			go_to_users: @utils.transition to @topic.user_breakdown
+				description: "Top-user / user-adoption question"
+			go_to_prompts: @utils.transition to @topic.prompt_breakdown
+				description: "Top-prompt / prompt-performance question"
+
+topic overview:
+	label: "Usage overview"
+	description: "Answer headline KPI questions about GenAI usage volume, acceptance, and tokens."
+
+	actions:
+		get_usage_overview:
+			description: "Returns request volume, unique users, acceptance rate, total tokens, and top user/prompt/model."
+			target: "apex://GetUsageOverviewAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+			outputs:
+				totalRequests: integer
+					description: "Total GenAI requests in the window."
+					is_displayable: True
+				uniqueUsers: integer
+					description: "Distinct users who made at least one request."
+					is_displayable: True
+				acceptanceRateLabel: string
+					description: "Acceptance rate as a percent string, e.g. '78%'."
+					is_displayable: True
+				totalInputTokens: long
+					description: "Total input tokens consumed."
+				totalOutputTokens: long
+					description: "Total output tokens produced."
+				topUserName: string
+					description: "Highest-volume user in the window."
+					is_displayable: True
+				topPromptLabel: string
+					description: "Highest-volume prompt template."
+					is_displayable: True
+				topModelName: string
+					description: "Highest-token model."
+					is_displayable: True
+				dateRangeLabel: string
+					description: "Human-readable label of the queried window."
+
+	reasoning:
+		instructions: |
+			Summarize the KPIs in plain language. Highlight the top user, prompt, and model.
+			If acceptance rate is below 0.5, flag it as low.
+		actions:
+			pull: @actions.get_usage_overview
+				description: "Pull headline KPIs"
+				with startDate = ...
+				with endDate = ...
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"
+
+topic user_breakdown:
+	label: "Users"
+	description: "Answer questions about top users and user adoption of GenAI."
+
+	actions:
+		get_usage_by_user:
+			description: "Returns top users by request volume."
+			target: "apex://GetUsageByUserAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window."
+				endDate: datetime
+					description: "End of the analysis window."
+				topN: integer
+					description: "Limit on the number of users returned. Defaults to 10."
+			outputs:
+				usersJson: string
+					description: "JSON array of user usage rows."
+					is_displayable: True
+				rowCount: integer
+					description: "Number of rows in the response."
+
+	reasoning:
+		instructions: |
+			Read usersJson, present the top users with name, request count, acceptance rate, and total tokens.
+			If usersJson contains "error":true, report the error message plainly.
+		actions:
+			pull: @actions.get_usage_by_user
+				description: "Pull top-user list"
+				with startDate = ...
+				with endDate = ...
+				with topN = ...
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"
+
+topic prompt_breakdown:
+	label: "Prompts"
+	description: "Answer questions about prompt template performance and acceptance."
+
+	actions:
+		get_usage_by_prompt:
+			description: "Returns top prompt templates by invocation volume."
+			target: "apex://GetUsageByPromptAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window."
+				endDate: datetime
+					description: "End of the analysis window."
+				topN: integer
+					description: "Limit on the number of prompts returned."
+			outputs:
+				promptsJson: string
+					description: "JSON array of prompt usage rows."
+					is_displayable: True
+				rowCount: integer
+					description: "Number of rows in the response."
+
+	reasoning:
+		instructions: |
+			Read promptsJson, present prompts with their invocation count and acceptance rate.
+			Call out any prompt with acceptance below 0.4 as a candidate for review.
+		actions:
+			pull: @actions.get_usage_by_prompt
+				description: "Pull top-prompt list"
+				with startDate = ...
+				with endDate = ...
+				with topN = ...
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"

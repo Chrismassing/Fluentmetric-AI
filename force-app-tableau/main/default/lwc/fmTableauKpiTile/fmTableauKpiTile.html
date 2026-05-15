@@ -1,0 +1,49 @@
+<template>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:metrics" size="small" alternative-text="KPIs"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">{title}</h2>
+                </div>
+                <template lwc:if={hasData}>
+                    <div class="slds-no-flex">
+                        <span class="slds-text-body_small slds-text-color_weak">{rangeLabel}</span>
+                    </div>
+                </template>
+            </header>
+        </div>
+        <div class="slds-card__body slds-card__body_inner">
+            <template lwc:if={isLoading}>
+                <lightning-spinner size="small" alternative-text="Loading KPIs"></lightning-spinner>
+            </template>
+
+            <template lwc:if={hasData}>
+                <div class="slds-grid slds-wrap slds-grid_pull-padded">
+                    <div class="slds-col slds-size_1-of-2 slds-p-horizontal_small slds-m-bottom_small">
+                        <p class="slds-text-title slds-text-color_weak">Total requests</p>
+                        <p class="slds-text-heading_medium">{formattedRequests}</p>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2 slds-p-horizontal_small slds-m-bottom_small">
+                        <p class="slds-text-title slds-text-color_weak">Unique users</p>
+                        <p class="slds-text-heading_medium">{formattedUsers}</p>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2 slds-p-horizontal_small slds-m-bottom_small">
+                        <p class="slds-text-title slds-text-color_weak">Acceptance rate</p>
+                        <p class="slds-text-heading_medium">{formattedAcceptance}</p>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2 slds-p-horizontal_small slds-m-bottom_small">
+                        <p class="slds-text-title slds-text-color_weak">Total tokens</p>
+                        <p class="slds-text-heading_medium">{formattedTokens}</p>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:if={isEmpty}>
+                <p class="slds-text-color_weak slds-text-body_small">{emptyMessage}</p>
+            </template>
+        </div>
+    </article>
+</template>

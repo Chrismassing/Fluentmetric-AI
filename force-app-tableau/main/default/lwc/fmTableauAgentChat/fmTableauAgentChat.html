@@ -1,0 +1,28 @@
+<template>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:einstein" size="small" alternative-text="Agent"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">Ask the Tableau Analyst</h2>
+                </div>
+            </header>
+        </div>
+        <div class="slds-card__body slds-card__body_inner">
+            <p class="slds-text-body_small slds-m-bottom_x-small">
+                Ask conversational questions about your GenAI usage (overview KPIs, top users, prompt performance). The agent queries Data Cloud directly and points you at the Tableau Next workspace when deeper exploration is needed.
+            </p>
+            <p class="slds-text-color_weak slds-text-body_small">
+                Open the Einstein Copilot panel and pick the
+                <strong>{agentApiName}</strong> agent.
+            </p>
+            <ul class="slds-list_dotted slds-text-body_small slds-m-top_small">
+                <li>What was usage last week?</li>
+                <li>Who are the top 5 users this month?</li>
+                <li>Which prompts have the lowest acceptance rate?</li>
+            </ul>
+        </div>
+    </article>
+</template>

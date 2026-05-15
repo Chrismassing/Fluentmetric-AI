@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>FM_TBL_App_Title</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>FM Tableau App Title</shortDescription>
+        <value>FluentMetric AI for Tableau Next</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_App_Subtitle</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>FM Tableau App Subtitle</shortDescription>
+        <value>Tableau Next dashboards, AI insights, and conversational analytics over Einstein GenAI Audit data.</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Launcher_Workspace_Label</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Launcher workspace label</shortDescription>
+        <value>Open in Tableau Next</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Launcher_Workspace_Path</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Lightning navigation path to the Tableau Next workspace home</shortDescription>
+        <value>/lightning/n/standard__TableauEinstein</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Empty_Workspace</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Empty workspace state</shortDescription>
+        <value>The FluentMetric AI Tableau Next workspace is not configured yet. An admin needs to author a Semantic Model named FluentMetric_AI in Tableau Next Data Manager and deploy this package's AnalyticsWorkspace metadata.</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Kpi_Empty</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Empty KPI tile state</shortDescription>
+        <value>No GenAI audit data is available for the selected window.</value>
+    </labels>
+</CustomLabels>

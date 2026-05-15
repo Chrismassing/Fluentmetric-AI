@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>FluentMetric Tableau Next Launcher</masterLabel>
+    <description>Renders an "Open in Tableau Next" entry-point card. The button navigates to the Tableau Einstein app where the FluentMetric AI workspace lives.</description>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__HomePage</target>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__AppPage,lightning__HomePage,lightning__RecordPage">
+            <property name="title" type="String" label="Card Title" default="Explore in Tableau Next"/>
+            <property name="subtitle" type="String" label="Card Subtitle" default="Drag-drop pivot freedom over your GenAI Audit data."/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

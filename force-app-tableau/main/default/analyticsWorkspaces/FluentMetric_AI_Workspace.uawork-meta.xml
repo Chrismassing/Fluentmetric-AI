@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AnalyticsWorkspace xmlns="http://soap.sforce.com/2006/04/metadata">
+    <masterLabel>FluentMetric AI Workspace</masterLabel>
+    <workspaceAssetRelationships>
+        <asset>FluentMetric_AI</asset>
+        <assetType>SemanticModel</assetType>
+        <assetUsageType>Referenced</assetUsageType>
+        <workspace>FluentMetric_AI_Workspace</workspace>
+    </workspaceAssetRelationships>
+</AnalyticsWorkspace>
