@@ -212,4 +212,29 @@ public class AiInsightsDAOMock implements IAiInsightsDAO {
     ) {
         return new List<AggregateResult>();
     }
+
+    // ── Adoption analytics mocks (Phase 1.3) ───────────────────────────────
+    public List<AggregateResult> aggregatesByPromptAndModelToReturn = new List<AggregateResult>();
+    public List<SObject> requestTimestampsByUserToReturn = new List<SObject>();
+    public Map<String, DateTime> firstObservedByPromptToReturn = new Map<String, DateTime>();
+    public Integer distinctUserCountInWindowToReturn = 0;
+
+    public List<AggregateResult> getRequestAggregatesByPromptAndModel(DateTime startDate, DateTime endDate) {
+        return aggregatesByPromptAndModelToReturn;
+    }
+
+    public List<SObject> getRequestTimestampsByUser(DateTime startDate, DateTime endDate) {
+        return requestTimestampsByUserToReturn;
+    }
+
+    public DateTime getFirstObservedTimestampByPrompt(String promptDevName) {
+        if (String.isBlank(promptDevName) || firstObservedByPromptToReturn == null) {
+            return null;
+        }
+        return firstObservedByPromptToReturn.get(promptDevName);
+    }
+
+    public Integer getDistinctUserCountInWindow(DateTime startDate, DateTime endDate) {
+        return distinctUserCountInWindowToReturn == null ? 0 : distinctUserCountInWindowToReturn;
+    }
 }

@@ -880,4 +880,271 @@ private class AiInsightsServiceTest {
         Assert.areEqual(-1, AiInsightsService.dayIndex(anchor.addDays(-1), anchor, 3), 'negative range clamped to -1');
         Assert.areEqual(-1, AiInsightsService.dayIndex(null, anchor, 3));
     }
+
+    // ───────── Phase 2.3 — V1 compromise fix tests ─────────────────
+
+    @IsTest
+    static void testReadTopNPromptAcceptanceSample_defaultsTo25_whenSettingMissing() {
+        // No org-default record installed → fallback path returns 25
+        Integer n = AiInsightsService.readTopNPromptAcceptanceSample();
+        Assert.areEqual(25, n, 'default top-N is 25 when CSO row absent');
+    }
+
+    @IsTest
+    static void testReadTopNPromptAcceptanceSample_capsAtCeiling_whenConfiguredHigh() {
+        // Insert a CSO row with a value above the hard ceiling (50). The
+        // helper must clamp it down rather than allow a runaway chain walk.
+        FluentMetric_Cost_Settings__c s = FluentMetric_Cost_Settings__c.getOrgDefaults();
+        if (s == null) {
+            s = new FluentMetric_Cost_Settings__c();
+        }
+        s.Top_N_Prompt_Acceptance_Sample__c = 999;
+        upsert s;
+
+        Integer n = AiInsightsService.readTopNPromptAcceptanceSample();
+        Assert.areEqual(50, n, 'configured 999 must clamp to hard ceiling 50');
+    }
+
+    @IsTest
+    static void testSampleAcceptanceForPrompt_sampledRate_whenChainProducesFeedback() {
+        if (!hasDmoType()) {
+            return;
+        }
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        DateTime t = DateTime.now();
+        mock.requestsByPromptToReturn = new List<SObject>{
+            makeRequest('r1', '005000000000001', 'Atlas__P1', 'gpt-4', 'f1', t, 100.0, 50.0),
+            makeRequest('r2', '005000000000002', 'Atlas__P1', 'gpt-4', 'f1', t, 100.0, 50.0)
+        };
+        mock.responsesToReturn = new List<SObject>{ makeResponse('r1', 'resp1'), makeResponse('r2', 'resp2') };
+        mock.generationsToReturn = new List<SObject>{
+            makeGeneration('resp1', 'g1', 'output 1'),
+            makeGeneration('resp2', 'g2', 'output 2')
+        };
+        // 1 accepted + 1 rejected → expected rate 0.5
+        mock.feedbackByGenerationToReturn = new List<SObject>{
+            makeFeedback('g1', 'NOT_SET', 'thumbs_up', 'accepted'),
+            makeFeedback('g2', 'NOT_SET', 'thumbs_down', 'rejected')
+        };
+
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService());
+        Decimal rate = svc.sampleAcceptanceForPrompt('Atlas__P1', new DateRangeFilter(t.addDays(-7), t.addDays(1)));
+        Assert.areEqual(0.5000, rate, 'one positive, one negative ⇒ 0.5');
+    }
+
+    @IsTest
+    static void testSampleAcceptanceForPrompt_returnsNull_whenNoFeedback() {
+        if (!hasDmoType()) {
+            return;
+        }
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        DateTime t = DateTime.now();
+        mock.requestsByPromptToReturn = new List<SObject>{
+            makeRequest('r1', '005000000000001', 'Atlas__P1', 'gpt-4', 'f1', t, 100.0, 50.0)
+        };
+        mock.responsesToReturn = new List<SObject>{ makeResponse('r1', 'resp1') };
+        mock.generationsToReturn = new List<SObject>{ makeGeneration('resp1', 'g1', 'output 1') };
+        // No feedback → null (not 0) so LWC renders '—'
+        mock.feedbackByGenerationToReturn = new List<SObject>{};
+
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService());
+        Decimal rate = svc.sampleAcceptanceForPrompt('Atlas__P1', new DateRangeFilter(t.addDays(-7), t.addDays(1)));
+        Assert.isNull(rate, 'no feedback ⇒ null, leaving correlation pass intact');
+    }
+
+    // ─────────────── Phase 3 — Adoption analytics ────────────────
+    //
+    // AggregateResult can't be instantiated in tests, so the new method
+    // tests run against empty mocks (verifying defensive defaults) plus
+    // direct exercise of the @TestVisible helpers that drive the math.
+
+    @IsTest
+    static void testGetOrgAdoptionDeltas_emptyDao_returns8WeeksOfZeroes() {
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService(), new EntitlementServiceMock());
+        OrgAdoptionDeltasDTO dto = svc.getOrgAdoptionDeltas(
+            new DateRangeFilter(DateTime.now().addDays(-30), DateTime.now())
+        );
+        Assert.isNotNull(dto.weeks, 'weeks list initialized');
+        Assert.areEqual(8, dto.weeks.size(), '8-week trailing window');
+        for (OrgAdoptionDeltasDTO.WeekDelta wd : dto.weeks) {
+            Assert.areEqual(0, wd.requests, 'zero requests in empty DAO');
+            Assert.areEqual(0, wd.activeUsers, 'zero users in empty DAO');
+            Assert.areEqual(0L, wd.tokens, 'zero tokens in empty DAO');
+            Assert.isNotNull(wd.weekIsoLabel, 'weekIsoLabel populated');
+        }
+        Assert.areEqual(0, dto.latestRequestsWowPct, 'no WoW change in empty DAO');
+    }
+
+    @IsTest
+    static void testGetAdoptionCohorts_emptyDao_returnsEmptyDto() {
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService(), new EntitlementServiceMock());
+        AdoptionCohortsDTO dto = svc.getAdoptionCohorts(
+            new DateRangeFilter(DateTime.now().addDays(-30), DateTime.now())
+        );
+        Assert.isNotNull(dto);
+        Assert.isNotNull(dto.cohorts, 'cohorts list initialized');
+        Assert.areEqual(0, dto.cohorts.size(), 'no rows when DAO returns empty');
+        Assert.areEqual(false, dto.truncated, 'not truncated below 50k');
+        Assert.areEqual(0, dto.totalUsersObserved);
+    }
+
+    @IsTest
+    static void testGetPowerUserSegments_emptyDao_returnsZeroedDto() {
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService(), new EntitlementServiceMock());
+        PowerUserSegmentsDTO dto = svc.getPowerUserSegments(
+            new DateRangeFilter(DateTime.now().addDays(-7), DateTime.now())
+        );
+        Assert.isNotNull(dto);
+        Assert.areEqual(0, dto.totalActiveUsers);
+        Assert.areEqual(0L, dto.totalRequests);
+        Assert.areEqual(0, dto.top10PercentUserCount);
+        Assert.isNotNull(dto.topUsers, 'topUsers list initialized');
+        Assert.areEqual(0, dto.topUsers.size());
+    }
+
+    @IsTest
+    static void testGetFeatureAdoption_emptyDao_returnsEmptyList() {
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService(), new EntitlementServiceMock());
+        List<FeatureAdoptionDTO> rows = svc.getFeatureAdoption(
+            new DateRangeFilter(DateTime.now().addDays(-7), DateTime.now())
+        );
+        Assert.isNotNull(rows);
+        Assert.areEqual(0, rows.size());
+    }
+
+    @IsTest
+    static void testGetEntitlementSnapshot_passesActiveSetToService() {
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        EntitlementServiceMock entMock = new EntitlementServiceMock();
+        EntitlementSnapshotDTO seeded = new EntitlementSnapshotDTO();
+        seeded.entitledCount = 42;
+        seeded.activeCount = 7;
+        seeded.totalActiveOrgUsers = 100;
+        seeded.adoptionRate = 0.0700;
+        seeded.entitledFallback = false;
+        seeded.configuredPermissionSets = new List<String>{ 'Foo_PS', 'Bar_PSG' };
+        entMock.snapshotToReturn = seeded;
+
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService(), entMock);
+        EntitlementSnapshotDTO out = svc.getEntitlementSnapshot(
+            new DateRangeFilter(DateTime.now().addDays(-7), DateTime.now())
+        );
+        Assert.areEqual(42, out.entitledCount, 'snapshot pass-through');
+        Assert.areEqual(0.0700, out.adoptionRate);
+        Assert.areEqual(false, out.entitledFallback);
+        Assert.areEqual(2, out.configuredPermissionSets.size());
+    }
+
+    @IsTest
+    static void testGetEntitlementSnapshot_neverThrows_onSnapshotException() {
+        // Service swallows entitlement failures and returns a default DTO.
+        AiInsightsDAOMock mock = new AiInsightsDAOMock();
+        AiInsightsService svc = new AiInsightsService(mock, new UserResolverService(), new ThrowingEntitlement());
+        EntitlementSnapshotDTO out = svc.getEntitlementSnapshot(
+            new DateRangeFilter(DateTime.now().addDays(-7), DateTime.now())
+        );
+        Assert.isNotNull(out, 'fallback DTO returned, never null');
+        Assert.areEqual(0, out.entitledCount);
+        Assert.areEqual(true, out.entitledFallback, 'default DTO marks fallback');
+    }
+
+    private class ThrowingEntitlement implements IEntitlementService {
+        public Set<Id> getEntitledUserIds() {
+            throw new IllegalArgumentException('boom');
+        }
+        public List<String> getConfiguredPermissionSets() {
+            throw new IllegalArgumentException('boom');
+        }
+        public EntitlementSnapshotDTO getSnapshot(Set<String> activeUserIdStrings) {
+            throw new IllegalArgumentException('boom');
+        }
+    }
+
+    // ─────────────── Phase 3 — Helper math ───────────────────────
+
+    @IsTest
+    static void testWowPct_zeroPrior_returnsHundredOnIncrease() {
+        Decimal pct = AiInsightsService.wowPct((Long) 50, (Long) 0);
+        Assert.areEqual(100, pct, 'zero prior + non-zero latest ⇒ 100%');
+    }
+
+    @IsTest
+    static void testWowPct_zeroBoth_returnsZero() {
+        Decimal pct = AiInsightsService.wowPct((Long) 0, (Long) 0);
+        Assert.areEqual(0, pct, 'zero everywhere ⇒ 0%');
+    }
+
+    @IsTest
+    static void testWowPct_normal_returnsRoundedPct() {
+        // 120 vs. 100 = +20%
+        Decimal pct = AiInsightsService.wowPct((Long) 120, (Long) 100);
+        Assert.areEqual(20.00, pct, '+20% delta with 2dp');
+        // 80 vs. 100 = -20%
+        pct = AiInsightsService.wowPct((Long) 80, (Long) 100);
+        Assert.areEqual(-20.00, pct, '-20% delta with 2dp');
+    }
+
+    @IsTest
+    static void testToIsoWeekStart_normalizesToMonday() {
+        // Wednesday 2026-05-27 → Monday 2026-05-25
+        Date wed = Date.newInstance(2026, 5, 27);
+        Date wkStart = AiInsightsService.toIsoWeekStart(wed);
+        Assert.areEqual(Date.newInstance(2026, 5, 25), wkStart, 'Wed normalizes to prior Mon');
+        // Already Monday — should return same day
+        Date mon = Date.newInstance(2026, 5, 25);
+        Assert.areEqual(mon, AiInsightsService.toIsoWeekStart(mon), 'Mon stays Mon');
+        // Sunday 2026-05-31 → Monday 2026-05-25 (start of *that* ISO week)
+        Date sun = Date.newInstance(2026, 5, 31);
+        Assert.areEqual(
+            Date.newInstance(2026, 5, 25),
+            AiInsightsService.toIsoWeekStart(sun),
+            'Sun normalizes back to Mon'
+        );
+    }
+
+    @IsTest
+    static void testIsoWeekLabel_formatsAsYYYY_Www() {
+        Date mon = Date.newInstance(2026, 5, 25);
+        String label = AiInsightsService.isoWeekLabel(mon);
+        Assert.areEqual('2026-W22', label, 'ISO week 22 of 2026');
+    }
+
+    @IsTest
+    static void testWeeksBetween_normalDelta() {
+        Date a = Date.newInstance(2026, 5, 4); // Mon
+        Date b = Date.newInstance(2026, 5, 25); // Mon, 3 weeks later
+        Assert.areEqual(3, AiInsightsService.weeksBetween(a, b));
+        Assert.areEqual(0, AiInsightsService.weeksBetween(a, a));
+    }
+
+    @IsTest
+    static void testCountRepeatUsers_countsOnlyMultiInvocation() {
+        Integer repeat = AiInsightsService.countRepeatUsers(new List<Integer>{ 1, 2, 3, 1, 5 });
+        Assert.areEqual(3, repeat, 'three users with ≥2 invocations');
+        Assert.areEqual(0, AiInsightsService.countRepeatUsers(null));
+        Assert.areEqual(0, AiInsightsService.countRepeatUsers(new List<Integer>{ 1, 1, 1 }));
+    }
+
+    @IsTest
+    static void testMedianInteger_oddAndEvenCounts() {
+        Assert.areEqual(0, AiInsightsService.medianInteger(null), 'null ⇒ 0');
+        Assert.areEqual(0, AiInsightsService.medianInteger(new List<Integer>{}), 'empty ⇒ 0');
+        Assert.areEqual(3, AiInsightsService.medianInteger(new List<Integer>{ 5, 1, 3 }), 'odd count');
+        // Even count: median of [1, 2, 3, 4] = 2.5
+        Assert.areEqual(2.5, AiInsightsService.medianInteger(new List<Integer>{ 4, 2, 1, 3 }), 'even count');
+    }
+
+    @IsTest
+    static void testThreeArgConstructor_acceptsExplicitEntitlement() {
+        EntitlementServiceMock entMock = new EntitlementServiceMock();
+        AiInsightsService svc = new AiInsightsService(new AiInsightsDAOMock(), new UserResolverService(), entMock);
+        // Smoke: any read past the ctor wires fine; check via a method that
+        // doesn't require AggregateResult fixtures.
+        UsageOverviewDTO out = svc.getOverview(new DateRangeFilter(DateTime.now().addDays(-1), DateTime.now()));
+        Assert.isNotNull(out);
+    }
 }

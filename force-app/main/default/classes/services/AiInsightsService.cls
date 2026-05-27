@@ -42,14 +42,21 @@ public with sharing virtual class AiInsightsService {
     private final IAiInsightsDAO dao;
     @TestVisible
     private final UserResolverService resolver;
+    @TestVisible
+    private final IEntitlementService entitlement;
 
     public AiInsightsService() {
-        this(new AiInsightsDAO(), new UserResolverService());
+        this(new AiInsightsDAO(), new UserResolverService(), new EntitlementService());
     }
 
     public AiInsightsService(IAiInsightsDAO dao, UserResolverService resolver) {
+        this(dao, resolver, new EntitlementService());
+    }
+
+    public AiInsightsService(IAiInsightsDAO dao, UserResolverService resolver, IEntitlementService entitlement) {
         this.dao = dao;
         this.resolver = resolver;
+        this.entitlement = entitlement;
     }
 
     // ───────────────────────── Overview ─────────────────────────
@@ -171,7 +178,82 @@ public with sharing virtual class AiInsightsService {
             // Never break the dashboard on cost errors — DTO already has zeros from constructor.
         }
 
+        // Adoption snapshot (Phase 3.2). Pull active user IDs from the per-user
+        // aggregate already computed by `populateHighlights` is too late — that
+        // method swallows the list. Re-run the cheap aggregate so we have a
+        // crisp set of active userIds for the entitled-population denominator.
+        try {
+            Set<String> activeUidStrings = new Set<String>();
+            List<AggregateResult> userAggs = dao.getRequestAggregatesByUser(filter.startDate, filter.endDate);
+            if (userAggs != null) {
+                for (AggregateResult a : userAggs) {
+                    String uid = (String) a.get('gkey');
+                    if (String.isNotBlank(uid)) {
+                        activeUidStrings.add(uid);
+                    }
+                }
+            }
+            EntitlementSnapshotDTO snap = entitlement.getSnapshot(activeUidStrings);
+            if (snap != null) {
+                out.entitledUserCount = snap.entitledCount == null ? 0 : snap.entitledCount;
+                out.totalActiveOrgUsers = snap.totalActiveOrgUsers == null ? 0 : snap.totalActiveOrgUsers;
+                out.adoptionRate = snap.adoptionRate == null ? 0 : snap.adoptionRate;
+                out.entitledFallback = snap.entitledFallback == null ? true : snap.entitledFallback;
+            }
+        } catch (Exception entEx) {
+            // Adoption snapshot failures keep the overview rendering — DTO
+            // defaults already encode the fallback condition.
+        }
+
+        // WoW deltas (Phase 3.2) — latest week vs. prior week. Cheap two-call
+        // total since we only need the last 14 days regardless of the active
+        // filter. Each block isolated so one broken delta doesn't kill the
+        // others.
+        try {
+            populateOverviewWowDeltas(out);
+        } catch (Exception wowEx) {
+            // Leave defaults (0).
+        }
+
         return out;
+    }
+
+    @TestVisible
+    private void populateOverviewWowDeltas(UsageOverviewDTO out) {
+        DateTime now = DateTime.now();
+        DateTime latestStart = now.addDays(-7);
+        DateTime priorStart = now.addDays(-14);
+        DateTime priorEnd = latestStart.addSeconds(-1);
+
+        AggregateResult latestTot = null;
+        AggregateResult priorTot = null;
+        try {
+            latestTot = dao.getRequestTotals(latestStart, now);
+        } catch (Exception e) {
+        }
+        try {
+            priorTot = dao.getRequestTotals(priorStart, priorEnd);
+        } catch (Exception e) {
+        }
+        Integer latestRequests = latestTot == null ? 0 : toInteger(latestTot.get('cnt'));
+        Integer priorRequests = priorTot == null ? 0 : toInteger(priorTot.get('cnt'));
+        Long latestTokens = latestTot == null ? 0L : (toLong(latestTot.get('pt')) + toLong(latestTot.get('ct')));
+        Long priorTokens = priorTot == null ? 0L : (toLong(priorTot.get('pt')) + toLong(priorTot.get('ct')));
+
+        Integer latestUsers = 0;
+        Integer priorUsers = 0;
+        try {
+            latestUsers = dao.getDistinctUserCountInWindow(latestStart, now);
+        } catch (Exception e) {
+        }
+        try {
+            priorUsers = dao.getDistinctUserCountInWindow(priorStart, priorEnd);
+        } catch (Exception e) {
+        }
+
+        out.requestsWowPct = wowPct(latestRequests, priorRequests);
+        out.usersWowPct = wowPct(latestUsers, priorUsers);
+        out.tokensWowPct = wowPct(latestTokens, priorTokens);
     }
 
     // ───────────────────────── Overview trends ─────────────────────────
@@ -646,16 +728,23 @@ public with sharing virtual class AiInsightsService {
      * aggregate queries (per prompt, per user-and-prompt, and one feedback
      * scan) plus one name-resolution call.
      *
+     * Phase 2.2 update — acceptance attribution is now two-tier:
+     *   - Top-N highest-volume prompts get a SAMPLED rate via a bounded
+     *     Request → Response → Generation → Feedback chain walk
+     *     (configurable via `FluentMetric_Cost_Settings__c.Top_N_Prompt_Acceptance_Sample__c`,
+     *     default 25, sample size 500 requests per prompt). Hard ceiling
+     *     keeps total SOQL ≤ 4N + dashboard overhead under the 100-query
+     *     transaction limit.
+     *   - Tail prompts (rank > N) keep the cheaper feature-correlation path
+     *     and are tagged `acceptanceSource = 'CORRELATED'`.
+     *   - Prompts with no clean attribution stay null with
+     *     `acceptanceSource = null` so the LWC can render '—'.
+     *
      * Compromises (v1 — see BUILD-LOG for rationale):
-     *   - Per-prompt acceptanceRate is "best effort". GenAIFeedback__dlm lacks
-     *     a promptTemplateDevName column and the generation→prompt walk does
-     *     not scale, so we try to match on the `feature__c` dimension (which
-     *     both tables share) when a prompt maps to a single feature, and set
-     *     acceptanceRate to null when no clean attribution exists.
-     *   - Per-prompt toxicFlagCount is left at 0 in v1. GenAIContentQuality__dlm
-     *     also has no prompt linkage and the full chain walk is what triggered
-     *     the original scale bug. Phase 3.5/4 will revisit this via a
-     *     materialized join table or a narrower chain walk per prompt.
+     *   - Per-prompt toxicFlagCount is left at 0. GenAIContentQuality__dlm
+     *     has no prompt linkage and the full chain walk on every prompt is
+     *     what triggered the original scale bug. Future work: narrower
+     *     chain walk that piggybacks on the top-N sample.
      */
     public virtual List<PromptUsageDTO> getUsageByPrompt(DateRangeFilter filter) {
         validateFilter(filter);
@@ -762,6 +851,7 @@ public with sharing virtual class AiInsightsService {
 
         // Best-effort per-prompt feedback via feature correlation. Prompts that
         // don't map cleanly to a single feature keep acceptanceRate = null.
+        // Source = 'CORRELATED' until Phase 2.2's top-N pass overwrites it.
         if (!promptToFeature.isEmpty()) {
             try {
                 Map<String, Integer> posByFeature = new Map<String, Integer>();
@@ -784,10 +874,47 @@ public with sharing virtual class AiInsightsService {
                         continue;
                     }
                     Integer pos = posByFeature.get(feat) == null ? 0 : posByFeature.get(feat);
-                    dtoByPrompt.get(pdn).acceptanceRate = ((Decimal) pos / total).setScale(4);
+                    PromptUsageDTO promptDto = dtoByPrompt.get(pdn);
+                    promptDto.acceptanceRate = ((Decimal) pos / total).setScale(4);
+                    promptDto.acceptanceSource = 'CORRELATED';
                 }
             } catch (Exception ex) {
                 // Leave acceptanceRate null if feedback scan failed
+            }
+        }
+
+        // Phase 2.2 — bounded top-N chain walk. Sort prompts by invocation
+        // count, take the top N, and walk Request → Response → Generation →
+        // Feedback for each. SOQL budget: 4 calls × N prompts. With N=25
+        // (default), that's ≤100 queries plus the dashboard's existing
+        // overhead — well inside the per-transaction limit.
+        Integer topN = readTopNPromptAcceptanceSample();
+        if (topN > 0) {
+            try {
+                List<PromptUsageDTO> ranked = new List<PromptUsageDTO>(dtoByPrompt.values());
+                ranked.sort(new PromptUsageByCountDesc());
+                Integer cap = Math.min(topN, ranked.size());
+                for (Integer i = 0; i < cap; i++) {
+                    // Bail when the chain walk's 4 SOQL plus a 1-query buffer
+                    // would breach the per-transaction limit. Preserves
+                    // headroom for any caller that runs additional queries
+                    // after getUsageByPrompt.
+                    if (Limits.getLimitQueries() - Limits.getQueries() < 5) {
+                        break;
+                    }
+                    PromptUsageDTO promptDto = ranked[i];
+                    if (promptDto.invocationCount == null || promptDto.invocationCount == 0) {
+                        continue;
+                    }
+                    Decimal rate = sampleAcceptanceForPrompt(promptDto.promptDevName, filter);
+                    if (rate != null) {
+                        promptDto.acceptanceRate = rate;
+                        promptDto.acceptanceSource = 'SAMPLED';
+                    }
+                }
+            } catch (Exception ex) {
+                // Top-N walk best-effort — preserve whatever the correlation
+                // pass produced rather than zeroing it out.
             }
         }
 
@@ -797,18 +924,74 @@ public with sharing virtual class AiInsightsService {
             dtoByPrompt.get(pdn).promptLabel = labels.get(pdn) == null ? pdn : labels.get(pdn);
         }
 
-        // Cost analytics (Phase 3.5) — v1 uses the Standard-tier fallback
-        // because GenAIGatewayRequest__dlm aggregates by prompt don't carry
-        // a model dimension and the per-prompt-per-model DAO method doesn't
-        // exist yet. Phase 4 should add a proper prompt×model aggregate DAO.
+        // Cost analytics (Phase 2.1) — true prompt×model aggregation. For each
+        // (prompt, model) pair we ask CostCalculatorService for a CostResult,
+        // sum FC + USD into the prompt's totals, and roll confidence down to
+        // the weakest band seen across that prompt's models. If the
+        // prompt×model DAO call throws or returns nothing, fall back to the
+        // legacy single-call estimate so the dashboard never zeroes out.
         try {
             CostCalculatorService cost = new CostCalculatorService();
+            List<AggregateResult> promptModelAggs = dao.getRequestAggregatesByPromptAndModel(
+                filter.startDate,
+                filter.endDate
+            );
+            Map<String, Long> fcByPrompt = new Map<String, Long>();
+            Map<String, Decimal> usdByPrompt = new Map<String, Decimal>();
+            Map<String, Boolean> fallbackByPrompt = new Map<String, Boolean>();
+            Map<String, String> confidenceByPrompt = new Map<String, String>();
+            Set<String> coveredPrompts = new Set<String>();
+            if (promptModelAggs != null) {
+                for (AggregateResult a : promptModelAggs) {
+                    String pdn = (String) a.get('pdn');
+                    if (String.isBlank(pdn) || !dtoByPrompt.containsKey(pdn)) {
+                        continue;
+                    }
+                    String modelKey = (String) a.get('mdl');
+                    Integer cnt = toInteger(a.get('cnt'));
+                    Long tt = toLong(a.get('tt'));
+                    CostCalculatorService.CostResult cr = cost.costForAggregate(modelKey, cnt, tt);
+                    fcByPrompt.put(
+                        pdn,
+                        (fcByPrompt.get(pdn) == null ? 0L : fcByPrompt.get(pdn)) +
+                        (cr.flexCredits == null ? 0L : cr.flexCredits)
+                    );
+                    usdByPrompt.put(
+                        pdn,
+                        (usdByPrompt.get(pdn) == null ? (Decimal) 0 : usdByPrompt.get(pdn)) +
+                        (cr.discountedUsd == null ? (Decimal) 0 : cr.discountedUsd)
+                    );
+                    if (cr.usedFallback == true) {
+                        fallbackByPrompt.put(pdn, true);
+                    }
+                    confidenceByPrompt.put(pdn, weakerConfidence(confidenceByPrompt.get(pdn), cr.confidence));
+                    coveredPrompts.add(pdn);
+                }
+            }
             for (PromptUsageDTO dto : dtoByPrompt.values()) {
-                CostCalculatorService.CostResult cr = cost.costForAggregate(null, dto.invocationCount, dto.totalTokens);
-                dto.estimatedFlexCredits = cr.flexCredits == null ? 0L : cr.flexCredits;
-                dto.estimatedUsd = cr.discountedUsd == null ? 0 : cr.discountedUsd.setScale(4);
-                dto.costUsedFallback = cr.usedFallback == true;
-                dto.costConfidence = cr.confidence == null ? CostCalculatorService.CONFIDENCE_HIGH : cr.confidence;
+                if (coveredPrompts.contains(dto.promptDevName)) {
+                    dto.estimatedFlexCredits = fcByPrompt.get(dto.promptDevName) == null
+                        ? 0L
+                        : fcByPrompt.get(dto.promptDevName);
+                    Decimal u = usdByPrompt.get(dto.promptDevName);
+                    dto.estimatedUsd = u == null ? 0 : u.setScale(4);
+                    dto.costUsedFallback = fallbackByPrompt.get(dto.promptDevName) == true;
+                    dto.costConfidence = confidenceByPrompt.get(dto.promptDevName) == null
+                        ? CostCalculatorService.CONFIDENCE_HIGH
+                        : confidenceByPrompt.get(dto.promptDevName);
+                } else {
+                    // Prompt not in prompt×model aggregate (rare — e.g. all
+                    // requests had a null model). Single-call estimate.
+                    CostCalculatorService.CostResult cr = cost.costForAggregate(
+                        null,
+                        dto.invocationCount,
+                        dto.totalTokens
+                    );
+                    dto.estimatedFlexCredits = cr.flexCredits == null ? 0L : cr.flexCredits;
+                    dto.estimatedUsd = cr.discountedUsd == null ? 0 : cr.discountedUsd.setScale(4);
+                    dto.costUsedFallback = cr.usedFallback == true;
+                    dto.costConfidence = cr.confidence == null ? CostCalculatorService.CONFIDENCE_HIGH : cr.confidence;
+                }
             }
         } catch (Exception costEx) {
             // Swallow — zeros from constructor remain.
@@ -2407,6 +2590,521 @@ public with sharing virtual class AiInsightsService {
         return normalizedGroupBy == 'week' ? 'Wk ' + iso : iso;
     }
 
+    // ───────────────────────── Adoption analytics (Phase 3) ─────────────────
+
+    /**
+     * Trailing 8-week trend of (requests, activeUsers, tokens) for the Overview
+     * tab WoW chip strip + the Activity tab adoption sparkline. Independent of
+     * the active filter — always anchored to "now" so the chip matches the
+     * KPI tile delta. Eight DAO calls × two helpers each, all sub-second.
+     */
+    public virtual OrgAdoptionDeltasDTO getOrgAdoptionDeltas(DateRangeFilter filter) {
+        validateFilter(filter);
+        OrgAdoptionDeltasDTO out = new OrgAdoptionDeltasDTO();
+        Integer weekCount = 8;
+        DateTime now = DateTime.now();
+        // weekStart[i] is the start of the i-th week back. Week 0 is the
+        // most recent (still-active) ISO week.
+        Date currentWeekStart = toIsoWeekStart(now.dateGmt());
+        List<OrgAdoptionDeltasDTO.WeekDelta> series = new List<OrgAdoptionDeltasDTO.WeekDelta>();
+        for (Integer i = weekCount - 1; i >= 0; i--) {
+            Date wkStart = currentWeekStart.addDays(-7 * i);
+            Date wkEnd = wkStart.addDays(7);
+            DateTime startDt = DateTime.newInstance(wkStart, Time.newInstance(0, 0, 0, 0));
+            DateTime endDt = DateTime.newInstance(wkEnd, Time.newInstance(0, 0, 0, 0)).addSeconds(-1);
+            OrgAdoptionDeltasDTO.WeekDelta wd = new OrgAdoptionDeltasDTO.WeekDelta();
+            wd.weekStart = wkStart;
+            wd.weekIsoLabel = isoWeekLabel(wkStart);
+            try {
+                AggregateResult tot = dao.getRequestTotals(startDt, endDt);
+                if (tot != null) {
+                    wd.requests = toInteger(tot.get('cnt'));
+                    wd.tokens = toLong(tot.get('pt')) + toLong(tot.get('ct'));
+                }
+            } catch (Exception e) {
+            }
+            try {
+                wd.activeUsers = dao.getDistinctUserCountInWindow(startDt, endDt);
+            } catch (Exception e) {
+            }
+            series.add(wd);
+        }
+
+        // Compute WoW pct deltas in a second pass (oldest week has no prior
+        // baseline, so its delta stays 0).
+        for (Integer i = 1; i < series.size(); i++) {
+            OrgAdoptionDeltasDTO.WeekDelta cur = series[i];
+            OrgAdoptionDeltasDTO.WeekDelta prv = series[i - 1];
+            cur.requestsWowPct = wowPct(cur.requests, prv.requests);
+            cur.usersWowPct = wowPct(cur.activeUsers, prv.activeUsers);
+            cur.tokensWowPct = wowPct(cur.tokens, prv.tokens);
+        }
+
+        out.weeks = series;
+        if (series.size() >= 2) {
+            OrgAdoptionDeltasDTO.WeekDelta latest = series[series.size() - 1];
+            out.latestRequestsWowPct = latest.requestsWowPct == null ? 0 : latest.requestsWowPct;
+            out.latestUsersWowPct = latest.usersWowPct == null ? 0 : latest.usersWowPct;
+            out.latestTokensWowPct = latest.tokensWowPct == null ? 0 : latest.tokensWowPct;
+        }
+        return out;
+    }
+
+    /**
+     * Cohort retention: bins users by ISO-week of first observed request, then
+     * for each cohort × age-week computes the share of cohort members who were
+     * active in the observation week. Capped at MAX_COHORT_WEEKS to bound heap.
+     * `truncated = true` when the underlying timestamp DAO call hit its 50k cap.
+     */
+    public virtual AdoptionCohortsDTO getAdoptionCohorts(DateRangeFilter filter) {
+        validateFilter(filter);
+        AdoptionCohortsDTO out = new AdoptionCohortsDTO();
+        try {
+            List<SObject> rows = dao.getRequestTimestampsByUser(filter.startDate, filter.endDate);
+            if (rows == null || rows.isEmpty()) {
+                return out;
+            }
+            out.truncated = (rows.size() >= 50000);
+            Map<String, Date> firstSeenByUser = new Map<String, Date>();
+            // user -> set of ISO week starts the user was active in. Set<Date>
+            // is denser than List in heap because of dedup.
+            Map<String, Set<Date>> activeWeeksByUser = new Map<String, Set<Date>>();
+            for (SObject r : rows) {
+                String uid = (String) r.get('userId__c');
+                if (String.isBlank(uid)) {
+                    continue;
+                }
+                Object rawTs = r.get('timestamp__c');
+                Date d = toDateGmt(rawTs);
+                if (d == null) {
+                    continue;
+                }
+                Date wkStart = toIsoWeekStart(d);
+                Date prior = firstSeenByUser.get(uid);
+                if (prior == null || wkStart < prior) {
+                    firstSeenByUser.put(uid, wkStart);
+                }
+                Set<Date> active = activeWeeksByUser.get(uid);
+                if (active == null) {
+                    active = new Set<Date>();
+                    activeWeeksByUser.put(uid, active);
+                }
+                active.add(wkStart);
+            }
+            out.totalUsersObserved = firstSeenByUser.size();
+
+            // Build cohort buckets: cohortWeek -> userIds in that cohort.
+            Map<Date, Set<String>> cohortMembers = new Map<Date, Set<String>>();
+            for (String uid : firstSeenByUser.keySet()) {
+                Date cw = firstSeenByUser.get(uid);
+                Set<String> bucket = cohortMembers.get(cw);
+                if (bucket == null) {
+                    bucket = new Set<String>();
+                    cohortMembers.put(cw, bucket);
+                }
+                bucket.add(uid);
+            }
+
+            // Sort cohort weeks ASC so the heatmap renders oldest-first.
+            List<Date> cohortWeeks = new List<Date>(cohortMembers.keySet());
+            cohortWeeks.sort();
+            // Clip if we have more cohorts than the cap allows.
+            Integer maxWeeks = AdoptionCohortsDTO.MAX_COHORT_WEEKS;
+            if (cohortWeeks.size() > maxWeeks) {
+                cohortWeeks = sliceTail(cohortWeeks, maxWeeks);
+            }
+            Date latestCohort = cohortWeeks[cohortWeeks.size() - 1];
+
+            for (Date cw : cohortWeeks) {
+                Set<String> members = cohortMembers.get(cw);
+                AdoptionCohortsDTO.CohortRow row = new AdoptionCohortsDTO.CohortRow();
+                row.weekStart = cw;
+                row.weekIsoLabel = isoWeekLabel(cw);
+                row.cohortSize = members.size();
+                Integer weeksSinceFirst = weeksBetween(cw, latestCohort);
+                Integer ageCols = Math.min(weeksSinceFirst + 1, maxWeeks);
+                row.ageInWeeks = ageCols;
+                List<Decimal> retention = new List<Decimal>();
+                for (Integer ageIdx = 0; ageIdx < ageCols; ageIdx++) {
+                    Date observationWeek = cw.addDays(7 * ageIdx);
+                    Integer activeInWeek = 0;
+                    for (String uid : members) {
+                        Set<Date> userActive = activeWeeksByUser.get(uid);
+                        if (userActive != null && userActive.contains(observationWeek)) {
+                            activeInWeek++;
+                        }
+                    }
+                    Decimal pct = members.isEmpty() ? 0 : ((Decimal) activeInWeek / members.size()).setScale(4);
+                    retention.add(pct);
+                }
+                row.retentionByWeek = retention;
+                out.cohorts.add(row);
+            }
+        } catch (Exception e) {
+            // DAO failure or schema-absent — return empty DTO so the LWC shows
+            // its empty-state rather than crashing.
+        }
+        return out;
+    }
+
+    /**
+     * Pareto-style power-user segmentation. Sorts the existing per-user
+     * aggregate by request count DESC, slices top-1% / top-10%, computes
+     * volume share. No extra DAO call beyond the one cached aggregate.
+     */
+    public virtual PowerUserSegmentsDTO getPowerUserSegments(DateRangeFilter filter) {
+        validateFilter(filter);
+        PowerUserSegmentsDTO out = new PowerUserSegmentsDTO();
+        try {
+            List<AggregateResult> userAggs = dao.getRequestAggregatesByUser(filter.startDate, filter.endDate);
+            if (userAggs == null || userAggs.isEmpty()) {
+                return out;
+            }
+            List<UserAggRow> rows = new List<UserAggRow>();
+            Long totalRequests = 0L;
+            for (AggregateResult a : userAggs) {
+                String uid = (String) a.get('gkey');
+                if (String.isBlank(uid)) {
+                    continue;
+                }
+                UserAggRow r = new UserAggRow();
+                r.userId = uid;
+                r.requestCount = toInteger(a.get('cnt'));
+                r.totalTokens = toLong(a.get('tt'));
+                rows.add(r);
+                totalRequests += r.requestCount;
+            }
+            if (rows.isEmpty()) {
+                return out;
+            }
+            rows.sort(new UserAggByCountDesc());
+            out.totalActiveUsers = rows.size();
+            out.totalRequests = totalRequests;
+
+            Integer top10 = Math.max(1, (Integer) Math.ceil(rows.size() * 0.10));
+            Integer top1 = Math.max(1, (Integer) Math.ceil(rows.size() * 0.01));
+            // top-1% only meaningful when there are at least ~10 users; below
+            // that the ceil(1%) lower-bound makes it identical to "the top user".
+            if (rows.size() < 10) {
+                top1 = 0;
+            }
+            top10 = Math.min(top10, rows.size());
+            top1 = Math.min(top1, rows.size());
+
+            Long top10Reqs = 0L;
+            for (Integer i = 0; i < top10; i++) {
+                top10Reqs += rows[i].requestCount;
+            }
+            Long top1Reqs = 0L;
+            for (Integer i = 0; i < top1; i++) {
+                top1Reqs += rows[i].requestCount;
+            }
+
+            out.top10PercentUserCount = top10;
+            out.top10PercentRequestCount = top10Reqs;
+            out.top10PercentVolumeShare = totalRequests == 0 ? 0 : ((Decimal) top10Reqs / totalRequests).setScale(4);
+            out.top1PercentUserCount = top1;
+            out.top1PercentRequestCount = top1Reqs;
+            out.top1PercentVolumeShare = totalRequests == 0 ? 0 : ((Decimal) top1Reqs / totalRequests).setScale(4);
+
+            // Resolve names for the top slice (cap at 50 to keep the cache
+            // partition healthy and avoid LWC payload bloat).
+            Integer nameCap = Math.min(50, top10);
+            Set<String> idsToResolve = new Set<String>();
+            for (Integer i = 0; i < nameCap; i++) {
+                idsToResolve.add(rows[i].userId);
+            }
+            Map<String, String> names = new Map<String, String>();
+            try {
+                names = resolver.resolveUserNames(idsToResolve);
+            } catch (Exception e) {
+            }
+            for (Integer i = 0; i < nameCap; i++) {
+                UserAggRow r = rows[i];
+                PowerUserSegmentsDTO.TopUser tu = new PowerUserSegmentsDTO.TopUser();
+                tu.userId = r.userId;
+                tu.userName = names.get(r.userId);
+                tu.requestCount = r.requestCount;
+                tu.totalTokens = r.totalTokens;
+                tu.tier = (i < top1) ? 'Top 1%' : 'Top 10%';
+                out.topUsers.add(tu);
+            }
+        } catch (Exception e) {
+            // Swallow — empty DTO already returned with zeros.
+        }
+        return out;
+    }
+
+    /**
+     * Per-feature breadth/depth + first-observed timestamps. Breadth uses the
+     * entitled denominator from EntitlementService; depth is the median
+     * invocations per active user. Repeat-user count is users with ≥ 2
+     * invocations on that feature.
+     */
+    public virtual List<FeatureAdoptionDTO> getFeatureAdoption(DateRangeFilter filter) {
+        validateFilter(filter);
+        List<FeatureAdoptionDTO> out = new List<FeatureAdoptionDTO>();
+        try {
+            // Per-feature totals (counts, tokens, min/max ts).
+            List<AggregateResult> featureAggs = dao.getRequestAggregatesByFeature(filter.startDate, filter.endDate);
+            if (featureAggs == null || featureAggs.isEmpty()) {
+                return out;
+            }
+            // Per-(user, feature) for breadth + depth math.
+            List<AggregateResult> userFeatureAggs = dao.getRequestAggregatesByUserAndFeature(
+                filter.startDate,
+                filter.endDate
+            );
+
+            // Build feature -> List<invocationsPerUser>, and feature -> distinct users.
+            Map<String, List<Integer>> invocationsByFeature = new Map<String, List<Integer>>();
+            Map<String, Set<String>> uniqueUsersByFeature = new Map<String, Set<String>>();
+            if (userFeatureAggs != null) {
+                for (AggregateResult a : userFeatureAggs) {
+                    // alias used on this DAO method is `pdn` for the secondary
+                    // dimension and `uid` for user; see getRequestAggregatesByUserAndFeature
+                    String feat = (String) a.get('pdn');
+                    String uid = (String) a.get('uid');
+                    Integer cnt = toInteger(a.get('cnt'));
+                    if (String.isBlank(feat) || String.isBlank(uid)) {
+                        continue;
+                    }
+                    List<Integer> inv = invocationsByFeature.get(feat);
+                    if (inv == null) {
+                        inv = new List<Integer>();
+                        invocationsByFeature.put(feat, inv);
+                    }
+                    inv.add(cnt);
+                    Set<String> users = uniqueUsersByFeature.get(feat);
+                    if (users == null) {
+                        users = new Set<String>();
+                        uniqueUsersByFeature.put(feat, users);
+                    }
+                    users.add(uid);
+                }
+            }
+
+            // Resolve entitled denominator once.
+            Integer denominator = 0;
+            Boolean fallback = true;
+            try {
+                EntitlementSnapshotDTO snap = entitlement.getSnapshot(new Set<String>());
+                if (snap != null) {
+                    denominator = snap.entitledCount == null ? 0 : snap.entitledCount;
+                    fallback = snap.entitledFallback == null ? true : snap.entitledFallback;
+                }
+            } catch (Exception e) {
+            }
+
+            for (AggregateResult a : featureAggs) {
+                String feat = (String) a.get('gkey');
+                if (String.isBlank(feat)) {
+                    continue;
+                }
+                FeatureAdoptionDTO row = new FeatureAdoptionDTO();
+                row.featureName = feat;
+                row.invocationCount = toInteger(a.get('cnt'));
+                row.totalTokens = toLong(a.get('tt'));
+                Object minRaw = a.get('minTs');
+                Object maxRaw = a.get('maxTs');
+                if (minRaw != null) {
+                    row.firstObservedInRange = toDateTime(minRaw);
+                }
+                if (maxRaw != null) {
+                    row.lastObservedInRange = toDateTime(maxRaw);
+                }
+                List<Integer> invocations = invocationsByFeature.get(feat);
+                Set<String> distinctUsers = uniqueUsersByFeature.get(feat);
+                Integer unique = distinctUsers == null ? 0 : distinctUsers.size();
+                row.uniqueUserCount = unique;
+                row.repeatUserCount = countRepeatUsers(invocations);
+                row.depthMedian = medianInteger(invocations);
+                row.breadthRate = (denominator <= 0) ? 0 : ((Decimal) unique / denominator).setScale(4);
+                row.entitledFallback = fallback;
+                row.firstObservedInOrg = row.firstObservedInRange;
+                out.add(row);
+            }
+        } catch (Exception e) {
+            // Swallow — partial result already accumulated.
+        }
+        return out;
+    }
+
+    /**
+     * Thin pass-through to EntitlementService for the dedicated funnel LWC.
+     * Computes the active-userId set from the request aggregate so the
+     * snapshot has a real numerator.
+     */
+    public virtual EntitlementSnapshotDTO getEntitlementSnapshot(DateRangeFilter filter) {
+        validateFilter(filter);
+        Set<String> activeUserIdStrings = new Set<String>();
+        try {
+            List<AggregateResult> userAggs = dao.getRequestAggregatesByUser(filter.startDate, filter.endDate);
+            if (userAggs != null) {
+                for (AggregateResult a : userAggs) {
+                    String uid = (String) a.get('gkey');
+                    if (String.isNotBlank(uid)) {
+                        activeUserIdStrings.add(uid);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Empty active set — entitled snapshot still resolves with 0 active.
+        }
+        try {
+            EntitlementSnapshotDTO snap = entitlement.getSnapshot(activeUserIdStrings);
+            return snap == null ? new EntitlementSnapshotDTO() : snap;
+        } catch (Exception e) {
+            return new EntitlementSnapshotDTO();
+        }
+    }
+
+    // ───────────────────────── Adoption helpers ─────────────────────
+
+    @TestVisible
+    private static Decimal wowPct(Long latest, Long prior) {
+        if (prior == null || prior == 0L) {
+            return latest == null || latest == 0L ? 0 : 100;
+        }
+        Decimal delta = ((Decimal) (latest - prior) / prior) * 100;
+        return delta.setScale(2);
+    }
+
+    @TestVisible
+    private static Decimal wowPct(Integer latest, Integer prior) {
+        return wowPct(latest == null ? 0L : (Long) latest, prior == null ? 0L : (Long) prior);
+    }
+
+    /**
+     * ISO-8601 week start (Monday). Apex's `Date.toStartOfWeek()` honors the
+     * locale; we need an absolute Monday so cohorts align across users in
+     * different locales.
+     */
+    @TestVisible
+    private static Date toIsoWeekStart(Date d) {
+        if (d == null) {
+            return null;
+        }
+        // Date.SUNDAY-based offsets won't help here because Apex doesn't expose
+        // a direct day-of-week getter on Date. Use DateTime.format('u') which
+        // returns 1 (Mon) ... 7 (Sun).
+        DateTime asDt = DateTime.newInstance(d, Time.newInstance(12, 0, 0, 0));
+        Integer iso = Integer.valueOf(asDt.formatGmt('u'));
+        return d.addDays(-(iso - 1));
+    }
+
+    @TestVisible
+    private static String isoWeekLabel(Date weekStart) {
+        if (weekStart == null) {
+            return '';
+        }
+        DateTime asDt = DateTime.newInstance(weekStart, Time.newInstance(12, 0, 0, 0));
+        // 'YYYY-Www' is the ISO 8601 week date format.
+        return asDt.formatGmt('YYYY') + '-W' + asDt.formatGmt('ww');
+    }
+
+    @TestVisible
+    private static Integer weeksBetween(Date earlier, Date later) {
+        if (earlier == null || later == null) {
+            return 0;
+        }
+        Integer days = earlier.daysBetween(later);
+        return days / 7;
+    }
+
+    @TestVisible
+    private static Date toDateGmt(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof DateTime) {
+            return ((DateTime) raw).dateGmt();
+        }
+        try {
+            return DateTime.valueOf(String.valueOf(raw)).dateGmt();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @TestVisible
+    private static DateTime toDateTime(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof DateTime) {
+            return (DateTime) raw;
+        }
+        try {
+            return DateTime.valueOf(String.valueOf(raw));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @TestVisible
+    private static Integer countRepeatUsers(List<Integer> invocations) {
+        if (invocations == null) {
+            return 0;
+        }
+        Integer repeat = 0;
+        for (Integer n : invocations) {
+            if (n != null && n >= 2) {
+                repeat++;
+            }
+        }
+        return repeat;
+    }
+
+    @TestVisible
+    private static Decimal medianInteger(List<Integer> values) {
+        if (values == null || values.isEmpty()) {
+            return 0;
+        }
+        List<Integer> copy = new List<Integer>(values);
+        copy.sort();
+        Integer n = copy.size();
+        if (Math.mod(n, 2) == 1) {
+            return copy[n / 2];
+        }
+        Integer a = copy[n / 2 - 1];
+        Integer b = copy[n / 2];
+        return ((Decimal) (a + b) / 2).setScale(2);
+    }
+
+    @TestVisible
+    private static List<Date> sliceTail(List<Date> src, Integer count) {
+        Integer start = Math.max(0, src.size() - count);
+        List<Date> out = new List<Date>();
+        for (Integer i = start; i < src.size(); i++) {
+            out.add(src[i]);
+        }
+        return out;
+    }
+
+    @TestVisible
+    private class UserAggRow {
+        public String userId;
+        public Integer requestCount;
+        public Long totalTokens;
+
+        public UserAggRow() {
+            this.requestCount = 0;
+            this.totalTokens = 0L;
+        }
+    }
+
+    private class UserAggByCountDesc implements Comparator<UserAggRow> {
+        public Integer compare(UserAggRow a, UserAggRow b) {
+            Integer ac = a.requestCount == null ? 0 : a.requestCount;
+            Integer bc = b.requestCount == null ? 0 : b.requestCount;
+            if (ac == bc) {
+                return 0;
+            }
+            return ac < bc ? 1 : -1;
+        }
+    }
+
     // ───────────────────────── Prerequisites ─────────────────────
 
     public virtual Map<String, Boolean> checkPrerequisites() {
@@ -2560,6 +3258,99 @@ public with sharing virtual class AiInsightsService {
 
     private static String normalize(String s) {
         return s == null ? null : s.trim().toLowerCase();
+    }
+
+    /**
+     * Phase 2.2 — read the per-org top-N cap from FluentMetric_Cost_Settings__c.
+     * Defaults to 25 when the setting is missing/null. Hard ceiling of 50 to
+     * keep the chain walk inside the 100-SOQL transaction limit even when
+     * other dashboards run in the same call.
+     */
+    @TestVisible
+    private static Integer readTopNPromptAcceptanceSample() {
+        Integer fallback = 25;
+        Integer hardCeiling = 50;
+        try {
+            FluentMetric_Cost_Settings__c s = FluentMetric_Cost_Settings__c.getOrgDefaults();
+            if (s == null || s.Top_N_Prompt_Acceptance_Sample__c == null) {
+                return fallback;
+            }
+            Integer configured = s.Top_N_Prompt_Acceptance_Sample__c.intValue();
+            if (configured < 0) {
+                return fallback;
+            }
+            return Math.min(configured, hardCeiling);
+        } catch (Exception ex) {
+            return fallback;
+        }
+    }
+
+    /**
+     * Phase 2.2 — bounded chain walk producing a SAMPLED acceptance rate for
+     * a single prompt. Pulls up to 500 recent requests in window, joins
+     * Request → Response → Generation, then counts feedback. Returns null
+     * when there's no clean attribution (no requests, no feedback, or any
+     * step throws — caller leaves whatever the correlation pass produced).
+     */
+    @TestVisible
+    private Decimal sampleAcceptanceForPrompt(String promptDevName, DateRangeFilter filter) {
+        if (String.isBlank(promptDevName)) {
+            return null;
+        }
+        try {
+            List<SObject> requests = dao.getRecentRequestsByPromptTemplate(
+                promptDevName,
+                filter.startDate,
+                filter.endDate,
+                500
+            );
+            if (requests == null || requests.isEmpty()) {
+                return null;
+            }
+            Set<String> requestIds = collectBusinessKeys(requests, 'gatewayRequestId__c');
+            if (requestIds.isEmpty()) {
+                return null;
+            }
+            List<SObject> responses = dao.getResponsesForRequests(requestIds);
+            Set<String> responseIds = new Set<String>();
+            for (SObject r : responses) {
+                String rid = (String) r.get('generationResponseId__c');
+                if (String.isNotBlank(rid)) {
+                    responseIds.add(rid);
+                }
+            }
+            if (responseIds.isEmpty()) {
+                return null;
+            }
+            List<SObject> generations = dao.getGenerationsForResponses(responseIds);
+            Set<String> generationIds = new Set<String>();
+            for (SObject g : generations) {
+                String gid = (String) g.get('generationId__c');
+                if (String.isNotBlank(gid)) {
+                    generationIds.add(gid);
+                }
+            }
+            if (generationIds.isEmpty()) {
+                return null;
+            }
+            List<SObject> feedback = dao.getFeedbackForGenerations(generationIds);
+            Integer accepted = 0;
+            Integer rejected = 0;
+            for (SObject f : feedback) {
+                if (isPositiveFeedback(f)) {
+                    accepted++;
+                } else if (isNegativeFeedback(f)) {
+                    rejected++;
+                }
+            }
+            Integer denom = accepted + rejected;
+            if (denom == 0) {
+                return null;
+            }
+            return ((Decimal) accepted / denom).setScale(4);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     /**

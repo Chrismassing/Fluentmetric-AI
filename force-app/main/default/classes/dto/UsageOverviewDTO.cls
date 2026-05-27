@@ -65,6 +65,28 @@ public with sharing class UsageOverviewDTO {
     @AuraEnabled
     public Decimal agentforceUsd;
 
+    // Adoption analytics (Phase 1.4) — populated when an EntitlementService is
+    // wired into the AiInsightsService ctor. `entitledFallback = true` means
+    // no AI permission set was resolvable, so the denominator collapses to
+    // total active org users (UI surfaces an admin tip).
+    @AuraEnabled
+    public Integer entitledUserCount;
+    @AuraEnabled
+    public Integer totalActiveOrgUsers;
+    @AuraEnabled
+    public Decimal adoptionRate;
+    @AuraEnabled
+    public Boolean entitledFallback;
+
+    // Week-over-week deltas (latest week vs. prior week, percentage points).
+    // Default 0 so old callers see no chip rather than a null badge.
+    @AuraEnabled
+    public Decimal requestsWowPct;
+    @AuraEnabled
+    public Decimal usersWowPct;
+    @AuraEnabled
+    public Decimal tokensWowPct;
+
     public UsageOverviewDTO() {
         this.totalRequests = 0;
         this.uniqueUsers = 0;
@@ -82,5 +104,12 @@ public with sharing class UsageOverviewDTO {
         this.agentforceActionCount = 0;
         this.agentforceFlexCredits = 0L;
         this.agentforceUsd = 0;
+        this.entitledUserCount = 0;
+        this.totalActiveOrgUsers = 0;
+        this.adoptionRate = 0;
+        this.entitledFallback = true;
+        this.requestsWowPct = 0;
+        this.usersWowPct = 0;
+        this.tokensWowPct = 0;
     }
 }

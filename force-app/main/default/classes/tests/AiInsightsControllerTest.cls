@@ -129,6 +129,53 @@ private class AiInsightsControllerTest {
                 'cacheAvailable' => true
             };
         }
+
+        // ── Phase 3 — adoption analytics overrides ──────────────────
+        public Integer entitlementSnapshotCalls = 0;
+        public Integer adoptionCohortsCalls = 0;
+        public Integer orgAdoptionDeltasCalls = 0;
+        public Integer powerUserSegmentsCalls = 0;
+        public Integer featureAdoptionCalls = 0;
+
+        public override EntitlementSnapshotDTO getEntitlementSnapshot(DateRangeFilter f) {
+            entitlementSnapshotCalls++;
+            EntitlementSnapshotDTO dto = new EntitlementSnapshotDTO();
+            dto.entitledCount = 11;
+            dto.activeCount = 5;
+            dto.adoptionRate = 0.4545;
+            dto.entitledFallback = false;
+            return dto;
+        }
+
+        public override AdoptionCohortsDTO getAdoptionCohorts(DateRangeFilter f) {
+            adoptionCohortsCalls++;
+            AdoptionCohortsDTO dto = new AdoptionCohortsDTO();
+            dto.totalUsersObserved = 7;
+            return dto;
+        }
+
+        public override OrgAdoptionDeltasDTO getOrgAdoptionDeltas(DateRangeFilter f) {
+            orgAdoptionDeltasCalls++;
+            OrgAdoptionDeltasDTO dto = new OrgAdoptionDeltasDTO();
+            dto.latestRequestsWowPct = 12.50;
+            return dto;
+        }
+
+        public override PowerUserSegmentsDTO getPowerUserSegments(DateRangeFilter f) {
+            powerUserSegmentsCalls++;
+            PowerUserSegmentsDTO dto = new PowerUserSegmentsDTO();
+            dto.totalActiveUsers = 13;
+            dto.top10PercentVolumeShare = 0.78;
+            return dto;
+        }
+
+        public override List<FeatureAdoptionDTO> getFeatureAdoption(DateRangeFilter f) {
+            featureAdoptionCalls++;
+            FeatureAdoptionDTO row = new FeatureAdoptionDTO();
+            row.featureName = 'Stub Feature';
+            row.uniqueUserCount = 4;
+            return new List<FeatureAdoptionDTO>{ row };
+        }
     }
 
     private static StubService installStub() {
@@ -759,5 +806,73 @@ private class AiInsightsControllerTest {
         } catch (AuraHandledException e) {
             // Expected in most test orgs — ignore
         }
+    }
+
+    // ─────────────── Phase 3 — Adoption analytics endpoints ─────
+
+    @IsTest
+    static void testGetEntitlementSnapshot_delegates() {
+        StubService stub = installStub();
+        EntitlementSnapshotDTO dto = AiInsightsController.getEntitlementSnapshot(
+            DateTime.now().addDays(-7),
+            DateTime.now()
+        );
+        Assert.areEqual(1, stub.entitlementSnapshotCalls);
+        Assert.areEqual(11, dto.entitledCount);
+        Assert.areEqual(false, dto.entitledFallback);
+    }
+
+    @IsTest
+    static void testGetEntitlementSnapshot_invalidRangeWraps() {
+        installStub();
+        try {
+            AiInsightsController.getEntitlementSnapshot(DateTime.now(), DateTime.now().addDays(-1));
+            Assert.fail('expected AuraHandledException');
+        } catch (AuraHandledException e) {
+            // expected
+        }
+    }
+
+    @IsTest
+    static void testGetAdoptionCohorts_delegates() {
+        StubService stub = installStub();
+        AdoptionCohortsDTO dto = AiInsightsController.getAdoptionCohorts(DateTime.now().addDays(-30), DateTime.now());
+        Assert.areEqual(1, stub.adoptionCohortsCalls);
+        Assert.areEqual(7, dto.totalUsersObserved);
+    }
+
+    @IsTest
+    static void testGetOrgAdoptionDeltas_delegates() {
+        StubService stub = installStub();
+        OrgAdoptionDeltasDTO dto = AiInsightsController.getOrgAdoptionDeltas(
+            DateTime.now().addDays(-60),
+            DateTime.now()
+        );
+        Assert.areEqual(1, stub.orgAdoptionDeltasCalls);
+        Assert.areEqual(12.50, dto.latestRequestsWowPct);
+    }
+
+    @IsTest
+    static void testGetPowerUserSegments_delegates() {
+        StubService stub = installStub();
+        PowerUserSegmentsDTO dto = AiInsightsController.getPowerUserSegments(
+            DateTime.now().addDays(-7),
+            DateTime.now()
+        );
+        Assert.areEqual(1, stub.powerUserSegmentsCalls);
+        Assert.areEqual(13, dto.totalActiveUsers);
+        Assert.areEqual(0.78, dto.top10PercentVolumeShare);
+    }
+
+    @IsTest
+    static void testGetFeatureAdoption_delegates() {
+        StubService stub = installStub();
+        List<FeatureAdoptionDTO> rows = AiInsightsController.getFeatureAdoption(
+            DateTime.now().addDays(-7),
+            DateTime.now()
+        );
+        Assert.areEqual(1, stub.featureAdoptionCalls);
+        Assert.areEqual(1, rows.size());
+        Assert.areEqual('Stub Feature', rows[0].featureName);
     }
 }

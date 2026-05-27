@@ -353,6 +353,81 @@ public with sharing class AiInsightsController {
         }
     }
 
+    // ───────────────────────── Adoption analytics (Phase 3) ─────────
+
+    /**
+     * Adoption denominator snapshot for the dedicated funnel LWC. Returns
+     * entitled-population resolution + active vs. entitled match rate. Falls
+     * back to "all active org users" when the configured PermissionSets /
+     * Profiles can't be resolved.
+     */
+    @AuraEnabled(cacheable=true)
+    public static EntitlementSnapshotDTO getEntitlementSnapshot(DateTime startDate, DateTime endDate) {
+        try {
+            DateRangeFilter filter = buildFilter(startDate, endDate);
+            return service().getEntitlementSnapshot(filter);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load entitlement snapshot');
+        }
+    }
+
+    /**
+     * Cohort retention rollup for the cohort heatmap LWC. Bins users by ISO
+     * week of first observed request and returns per-cohort retention
+     * series (capped at 26 weeks).
+     */
+    @AuraEnabled(cacheable=true)
+    public static AdoptionCohortsDTO getAdoptionCohorts(DateTime startDate, DateTime endDate) {
+        try {
+            DateRangeFilter filter = buildFilter(startDate, endDate);
+            return service().getAdoptionCohorts(filter);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load adoption cohorts');
+        }
+    }
+
+    /**
+     * Trailing 8-week trend (requests, activeUsers, tokens) plus latest WoW
+     * pct deltas for the Overview KPI chips and Activity adoption sparkline.
+     */
+    @AuraEnabled(cacheable=true)
+    public static OrgAdoptionDeltasDTO getOrgAdoptionDeltas(DateTime startDate, DateTime endDate) {
+        try {
+            DateRangeFilter filter = buildFilter(startDate, endDate);
+            return service().getOrgAdoptionDeltas(filter);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load adoption deltas');
+        }
+    }
+
+    /**
+     * Pareto-style power-user segmentation for the Overview Pareto chip and
+     * the User Adoption tier badges.
+     */
+    @AuraEnabled(cacheable=true)
+    public static PowerUserSegmentsDTO getPowerUserSegments(DateTime startDate, DateTime endDate) {
+        try {
+            DateRangeFilter filter = buildFilter(startDate, endDate);
+            return service().getPowerUserSegments(filter);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load power user segments');
+        }
+    }
+
+    /**
+     * Per-feature breadth/depth + first-observed timestamps for the Activity
+     * tab feature-adoption table.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<FeatureAdoptionDTO> getFeatureAdoption(DateTime startDate, DateTime endDate) {
+        try {
+            DateRangeFilter filter = buildFilter(startDate, endDate);
+            return service().getFeatureAdoption(filter);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load feature adoption');
+        }
+    }
+
     // ───────────────────────── Helpers ───────────────────────────
 
     private static DateRangeFilter buildFilter(DateTime startDate, DateTime endDate) {

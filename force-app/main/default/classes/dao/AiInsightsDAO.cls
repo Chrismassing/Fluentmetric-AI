@@ -836,4 +836,73 @@ public with sharing class AiInsightsDAO implements IAiInsightsDAO {
         binds.put('anchorVal', anchorValue);
         return (List<AggregateResult>) Database.queryWithBinds(soql, binds, AccessLevel.USER_MODE);
     }
+
+    // ── Adoption analytics helpers (Phase 1.3) ─────────────────────────────
+
+    public List<AggregateResult> getRequestAggregatesByPromptAndModel(DateTime startDate, DateTime endDate) {
+        String soql =
+            'SELECT promptTemplateDevName__c pdn, model__c mdl, ' +
+            'COUNT(Id) cnt, ' +
+            'SUM(promptTokens__c) pt, ' +
+            'SUM(completionTokens__c) ct, ' +
+            'SUM(totalTokens__c) tt ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'GROUP BY promptTemplateDevName__c, model__c';
+        return (List<AggregateResult>) Database.queryWithBinds(
+            soql,
+            new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
+            AccessLevel.USER_MODE
+        );
+    }
+
+    public List<SObject> getRequestTimestampsByUser(DateTime startDate, DateTime endDate) {
+        String soql =
+            'SELECT userId__c, timestamp__c ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'AND userId__c != null ' +
+            'ORDER BY timestamp__c ASC ' +
+            'LIMIT 50000';
+        return Database.queryWithBinds(
+            soql,
+            new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
+            AccessLevel.USER_MODE
+        );
+    }
+
+    public DateTime getFirstObservedTimestampByPrompt(String promptDevName) {
+        if (String.isBlank(promptDevName)) {
+            return null;
+        }
+        String soql =
+            'SELECT MIN(timestamp__c) minTs ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE promptTemplateDevName__c = :promptDevName';
+        List<AggregateResult> rows = (List<AggregateResult>) Database.queryWithBinds(
+            soql,
+            new Map<String, Object>{ 'promptDevName' => promptDevName },
+            AccessLevel.USER_MODE
+        );
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Object raw = rows[0].get('minTs');
+        return raw == null ? null : (DateTime) raw;
+    }
+
+    public Integer getDistinctUserCountInWindow(DateTime startDate, DateTime endDate) {
+        String soql =
+            'SELECT userId__c g ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'AND userId__c != null ' +
+            'GROUP BY userId__c';
+        List<AggregateResult> rows = (List<AggregateResult>) Database.queryWithBinds(
+            soql,
+            new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
+            AccessLevel.USER_MODE
+        );
+        return rows.size();
+    }
 }

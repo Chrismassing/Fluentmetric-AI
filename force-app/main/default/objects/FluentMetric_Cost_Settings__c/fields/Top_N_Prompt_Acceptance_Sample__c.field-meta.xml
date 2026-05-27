@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Top_N_Prompt_Acceptance_Sample__c</fullName>
+    <defaultValue>25</defaultValue>
+    <description>Phase 2.2 — number of top-volume prompts that get a SAMPLED acceptance rate via a bounded Request→Response→Generation→Feedback chain walk. Tail prompts (rank > N) keep the cheaper feature-correlation path. Tune down on busy orgs that brush against the 100-SOQL transaction limit; tune up if customers want SAMPLED coverage on more prompts. 0 disables sampling and reverts everything to CORRELATED.</description>
+    <externalId>false</externalId>
+    <label>Top N Prompt Acceptance Sample</label>
+    <precision>4</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

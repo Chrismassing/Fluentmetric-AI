@@ -42,6 +42,12 @@ public with sharing class OverviewTrendsDTO {
     @AuraEnabled
     public List<Integer> dailyToxicFlags;
 
+    // Trailing-8-week summary (oldest first). Same shape as
+    // OrgAdoptionDeltasDTO.WeekDelta but inlined here so the LWC can render
+    // the WoW chip strip without a second controller call.
+    @AuraEnabled
+    public List<OrgAdoptionDeltasDTO.WeekDelta> weeklyTrend;
+
     public OverviewTrendsDTO() {
         this.previousTotalRequests = 0;
         this.previousUniqueUsers = 0;
@@ -53,5 +59,6 @@ public with sharing class OverviewTrendsDTO {
         this.dailyRequests = new List<Integer>();
         this.dailyTokens = new List<Long>();
         this.dailyToxicFlags = new List<Integer>();
+        this.weeklyTrend = new List<OrgAdoptionDeltasDTO.WeekDelta>();
     }
 }

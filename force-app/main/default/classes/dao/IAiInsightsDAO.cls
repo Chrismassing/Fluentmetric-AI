@@ -174,4 +174,42 @@ public interface IAiInsightsDAO {
         String anchorValue,
         String groupByField
     );
+
+    // ── Adoption analytics helpers (Phase 1.3) ─────────────────────────────
+
+    /**
+     * Two-dimensional aggregate keyed by prompt template AND model. Powers the
+     * per-prompt cost fix in `AiInsightsService.getUsageByPrompt`: each (prompt,
+     * model) pair feeds into `CostCalculatorService.costForAggregate`, then
+     * confidence rolls down to the weakest band across that prompt's models.
+     *
+     * Aliases: `pdn` (promptTemplateDevName__c), `mdl` (model__c), `cnt`,
+     * `pt`, `ct`, `tt`.
+     */
+    List<AggregateResult> getRequestAggregatesByPromptAndModel(DateTime startDate, DateTime endDate);
+
+    /**
+     * Minimal (userId__c, timestamp__c) projection for cohort retention math.
+     * 50k row cap; the service must surface a "Cohort retention truncated"
+     * banner when the cap is hit so users know to narrow the date range.
+     * Ordered by timestamp__c ASC so cohort first-seen calc is a single pass.
+     */
+    List<SObject> getRequestTimestampsByUser(DateTime startDate, DateTime endDate);
+
+    /**
+     * Earliest observed `timestamp__c` for a given promptTemplateDevName__c.
+     * Unbounded — used so a prompt's "first seen in org" can predate the
+     * active date filter (e.g. Activity tab "first observed" column).
+     * Returns null when the prompt has no rows.
+     */
+    DateTime getFirstObservedTimestampByPrompt(String promptDevName);
+
+    /**
+     * Count of distinct `userId__c` values active in a date window. Used by
+     * the WoW deltas calculation: 8 narrow calls (one per trailing week) feed
+     * the trend chart on the Overview tab. Equivalent to `countDistinctUsers`
+     * but kept as a separate typed helper so callers can swap the source
+     * (e.g. eventually a DateRange wrapper) without breaking existing usage.
+     */
+    Integer getDistinctUserCountInWindow(DateTime startDate, DateTime endDate);
 }
