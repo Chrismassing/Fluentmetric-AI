@@ -15,6 +15,23 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [Unreleased]
 
+---
+
+## [1.0.0] - 2026-05-28
+
+**Install URLs:**
+- **Lightning Edition (beta):** https://login.salesforce.com/packaging/installPackage.apexp?p0=04tHn000001NtfGIAS
+- **Tableau Next Edition:** Deferred to v1.1.
+- For sandboxes, replace `login` with `test`.
+
+**Upgrade notes:** First public release. Permission Set `FluentMetric_AI_User`
+required after install. v1.0.0 ships as a **beta** (Salesforce shows an
+"installing a beta version" banner) because two Apex classes
+(`AiInsightsService`, `AiInsightsDAO`) are below the 75% per-class coverage
+threshold required for promotion to non-beta. v1.1 will rebuild the fixtures
+and ship as a promoted version. See
+[Documents/Developer/v1.1-test-debt.md](Documents/Developer/v1.1-test-debt.md).
+
 ### Added
 
 - **Three-persona documentation tree** under [Documents/](Documents/):
@@ -66,6 +83,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   a benign SPA 404 — pivot to Adoption / Explorer instead.
 - Permission Set assignments and Custom Setting values persist through
   upgrade. See [Documents/Admin/07-upgrade.md](Documents/Admin/07-upgrade.md).
+
+### Known gaps (v1.0.0)
+
+- **AiInsightsService (25%) and AiInsightsDAO (4%) ship below the 75%
+  per-class Apex coverage threshold.** v1.0.0 is therefore released as a
+  beta version (`sf package version create` without `--code-coverage`);
+  the install URL works, but Salesforce shows an "installing a beta
+  version" banner during install. v1.1 will rebuild fixtures using the
+  `Type.forName + System.JSON.deserialize` DMO workaround and ship as a
+  promoted (non-beta) release. Full context, rebuild plan, and timeline:
+  [Documents/Developer/v1.1-test-debt.md](Documents/Developer/v1.1-test-debt.md).
 
 ---
 

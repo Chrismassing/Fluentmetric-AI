@@ -13,7 +13,7 @@ SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
 .PHONY: help \
-        deploy-lightning test-lightning \
+        deploy-lightning test-lightning smoke-lightning \
         publish-semantic-model publish-semantic-extensions publish-dashboards \
         deploy-tableau assign-permsets publish-agent share-workspace \
         package-dashboards deploy-dashboards \
@@ -39,6 +39,11 @@ test-lightning: ## Run Lightning edition Apex tests
 	    --test-level RunLocalTests \
 	    --code-coverage \
 	    --result-format human
+
+smoke-lightning: ## Anonymous Apex smoke against the Lightning controller surface
+	sf apex run \
+	    --file scripts/verify-lightning.apex \
+	    --target-org $(TARGET_ORG)
 
 # ---------------------------------------------------------------------------
 # Tableau Next edition — phases
@@ -129,10 +134,15 @@ release: ## Cut a 2GP version of both editions (use VERSION=X.Y.Z)
 
 release-lightning: ## Cut Lightning edition 2GP version (internal — use 'make release')
 	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION not set"; exit 1; fi
+	# v1.0.0 ships as beta (no --code-coverage flag). Promotion to a
+	# non-beta version requires 75% on every class; AiInsightsService (25%)
+	# and AiInsightsDAO (4%) are below threshold. v1.1 will rebuild
+	# fixtures and ship as a promoted (non-beta) release. See
+	# Documents/Developer/v1.1-test-debt.md.
 	sf package version create \
 	    --package "FluentMetric AI" \
 	    --installation-key-bypass \
-	    --wait 20 \
+	    --wait 30 \
 	    --target-dev-hub $(DEVHUB)
 
 release-tableau: ## Cut Tableau Next edition 2GP version (internal — use 'make release')
