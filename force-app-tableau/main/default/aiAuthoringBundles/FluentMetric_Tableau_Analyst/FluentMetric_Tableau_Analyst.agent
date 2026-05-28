@@ -7,6 +7,10 @@ system:
 		- "What was X" / "show me X" / KPI questions: use get_usage_overview.
 		- "Top users" / "who is using AI most" / "user adoption": use get_usage_by_user.
 		- "Top prompts" / "which prompts" / "prompt acceptance": use get_usage_by_prompt.
+		- "How many of my licensed users use AI" / "is usage growing" / "who are my power users" / "feature adoption": route to adoption_health.
+		- "Cohort retention" / "weekly retention grid" / "stickiness": route to cohorts.
+		- "Toxic content" / "safety" / "token consumption" / "tokens by model": route to safety_and_tokens.
+		- "Show details for user X" / "show outputs for prompt X" / "drill into model Y": route to drilldown.
 		- "Where can I see this" / "open the dashboard" / "explore further": tell the user to click the "Open in Tableau Next" button on the FluentMetric AI for Tableau Next page.
 
 		Data scope: every metric comes from the Salesforce Data Cloud Einstein GenAI Audit DMOs, surfaced through Apex services. You do NOT call Tableau Cloud or any external system.
@@ -36,6 +40,10 @@ start_agent topic_selector:
 			KPIs / "what was": route to overview.
 			"Top users" / "who": route to user_breakdown.
 			"Top prompts" / "which prompts": route to prompt_breakdown.
+			"Adoption" / "licensed users" / "week over week" / "power users" / "feature adoption": route to adoption_health.
+			"Cohort retention" / "weekly retention" / "stickiness": route to cohorts.
+			"Toxic" / "safety" / "tokens by model" / "token consumption": route to safety_and_tokens.
+			"Show details for X" / "drill into X" / "sample outputs for prompt X": route to drilldown.
 		actions:
 			go_to_overview: @utils.transition to @topic.overview
 				description: "Headline KPI question"
@@ -43,6 +51,14 @@ start_agent topic_selector:
 				description: "Top-user / user-adoption question"
 			go_to_prompts: @utils.transition to @topic.prompt_breakdown
 				description: "Top-prompt / prompt-performance question"
+			go_to_adoption_health: @utils.transition to @topic.adoption_health
+				description: "Entitlement-aware adoption, week-over-week deltas, power users, feature adoption"
+			go_to_cohorts: @utils.transition to @topic.cohorts
+				description: "Weekly cohort retention grid"
+			go_to_safety_and_tokens: @utils.transition to @topic.safety_and_tokens
+				description: "Toxicity, content safety, and token consumption breakdowns"
+			go_to_drilldown: @utils.transition to @topic.drilldown
+				description: "Drill into a specific user, prompt, model, or feature"
 
 topic overview:
 	label: "Usage overview"
@@ -162,5 +178,328 @@ topic prompt_breakdown:
 				with startDate = ...
 				with endDate = ...
 				with topN = ...
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"
+
+topic adoption_health:
+	label: "Adoption health"
+	description: "Answer entitlement-aware adoption questions: how many licensed users are active, week-over-week deltas, power users, and per-feature adoption."
+
+	actions:
+		get_entitlement_snapshot:
+			description: "Returns entitled vs active user counts and overall adoption rate against the configured entitlement permission sets."
+			target: "apex://GetEntitlementSnapshotAction"
+			outputs:
+				entitledCount: integer
+					description: "Distinct users entitled via the configured permission sets."
+					is_displayable: True
+				activeCount: integer
+					description: "Distinct users who actually made at least one GenAI request."
+					is_displayable: True
+				adoptionRateLabel: string
+					description: "Active over entitled, e.g. '47%'."
+					is_displayable: True
+				entitledFallback: boolean
+					description: "True when entitlement could not be resolved and totals fall back to all active org users."
+				unmatchedActiveCount: integer
+					description: "Active users not entitled via the configured permission sets."
+				configuredPermissionSetsLabel: string
+					description: "Comma-separated configured entitlement permission sets."
+					is_displayable: True
+
+		get_adoption_deltas:
+			description: "Returns 8 weeks of usage with week-over-week percentage deltas for requests, distinct users, and tokens."
+			target: "apex://GetAdoptionDeltasAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the 8-week window. Leave blank for last 56 days."
+				endDate: datetime
+					description: "End of the 8-week window. Leave blank for now."
+			outputs:
+				latestRequestsWowPctLabel: string
+					description: "Latest week request volume vs prior week, e.g. '+12.5%'."
+					is_displayable: True
+				latestUsersWowPctLabel: string
+					description: "Latest week unique users vs prior week."
+					is_displayable: True
+				latestTokensWowPctLabel: string
+					description: "Latest week total tokens vs prior week."
+					is_displayable: True
+				latestWeekIsoLabel: string
+					description: "ISO label for the latest week, e.g. '2026-W21'."
+					is_displayable: True
+				priorWeekIsoLabel: string
+					description: "ISO label for the prior week."
+				weeksJson: string
+					description: "JSON array of 8 weekly rows with iso, requestCount, userCount, tokenCount."
+					is_displayable: True
+
+		get_power_user_segments:
+			description: "Returns Pareto power-user breakdown: top 1% and top 10% volume share, plus the top 25 users."
+			target: "apex://GetPowerUserSegmentsAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+			outputs:
+				top1PercentVolumeShareLabel: string
+					description: "Share of all requests made by the top 1% of users, e.g. '38%'."
+					is_displayable: True
+				top10PercentVolumeShareLabel: string
+					description: "Share of all requests made by the top 10% of users."
+					is_displayable: True
+				top1PercentUserCount: integer
+					description: "Number of users in the top-1% bucket."
+				top10PercentUserCount: integer
+					description: "Number of users in the top-10% bucket."
+				topUsersJson: string
+					description: "JSON array of up to 25 top users with userName, requestCount, tokenCount."
+					is_displayable: True
+
+		get_feature_adoption:
+			description: "Returns per-feature adoption: breadth (% of entitled users), depth (median requests per active user), and repeat-user counts."
+			target: "apex://GetFeatureAdoptionAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+			outputs:
+				featuresJson: string
+					description: "JSON array of feature rows with featureName, breadthRate, depthMedian, uniqueUsers, repeatUsers."
+					is_displayable: True
+				entitledFallback: boolean
+					description: "True when entitlement could not be resolved for breadth calculation."
+				rowCount: integer
+					description: "Number of feature rows returned."
+
+	reasoning:
+		instructions: |
+			Pick the action that matches the question:
+			- "How many licensed users use AI" / "what's adoption" → get_entitlement_snapshot.
+			- "Is usage growing" / "week over week" / "WoW" → get_adoption_deltas.
+			- "Who are my power users" / "Pareto" / "top 1%" → get_power_user_segments.
+			- "Feature adoption" / "which features" / "breadth and depth" → get_feature_adoption.
+			Present numbers plainly. If entitledFallback is True, note that adoption is shown against all active org users (no entitlement permission sets configured).
+			If a tool returns "error":true in JSON, report the error message plainly.
+		actions:
+			pull_entitlement: @actions.get_entitlement_snapshot
+				description: "Pull entitlement-aware adoption snapshot"
+			pull_deltas: @actions.get_adoption_deltas
+				description: "Pull 8-week WoW deltas"
+				with startDate = ...
+				with endDate = ...
+			pull_power_users: @actions.get_power_user_segments
+				description: "Pull Pareto power-user segments"
+				with startDate = ...
+				with endDate = ...
+			pull_feature_adoption: @actions.get_feature_adoption
+				description: "Pull per-feature breadth and depth"
+				with startDate = ...
+				with endDate = ...
+			go_to_drilldown: @utils.transition to @topic.drilldown
+				description: "Drill into a specific user, prompt, model, or feature"
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"
+
+topic cohorts:
+	label: "Cohort retention"
+	description: "Answer questions about weekly cohort retention — how many users from cohort week N are still active in week N+k."
+
+	actions:
+		get_adoption_cohorts:
+			description: "Returns weekly cohort retention grid (capped at 26 weeks per cohort row)."
+			target: "apex://GetAdoptionCohortsAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the cohort observation window. Leave blank for last 180 days."
+				endDate: datetime
+					description: "End of the cohort observation window. Leave blank for now."
+			outputs:
+				cohortsJson: string
+					description: "JSON array of cohort rows: cohortIsoWeek, cohortSize, weeklyActiveCounts, weeklyRetentionRates."
+					is_displayable: True
+				truncated: boolean
+					description: "True when any cohort row exceeded the 26-week cap."
+				totalUsersObserved: integer
+					description: "Distinct users observed across all cohorts."
+
+	reasoning:
+		instructions: |
+			Render cohortsJson as a markdown retention table when possible:
+			- Rows are cohort weeks (oldest at the top).
+			- Columns are weeks since cohort start (W0, W1, W2, ...).
+			- Cell values are retention rates as percentages.
+			Call out any cohort with sharp drop-off after W1 or strong long-tail retention.
+			If truncated is True, mention the 26-week cap.
+		actions:
+			pull: @actions.get_adoption_cohorts
+				description: "Pull cohort retention grid"
+				with startDate = ...
+				with endDate = ...
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"
+
+topic safety_and_tokens:
+	label: "Safety and tokens"
+	description: "Answer questions about content safety (toxicity, top categories, recent flagged outputs) and token consumption breakdowns by user, model, prompt, or feature."
+
+	actions:
+		get_safety_overview:
+			description: "Returns toxicity counts, toxic rate, top safety category by average score, and up to 10 recent flagged outputs (truncated text)."
+			target: "apex://GetSafetyOverviewAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+			outputs:
+				totalGenerations: integer
+					description: "Total generations in the window."
+					is_displayable: True
+				toxicCount: integer
+					description: "Generations flagged as toxic."
+					is_displayable: True
+				toxicRateLabel: string
+					description: "Toxic rate as a percent string, e.g. '0.8%'."
+					is_displayable: True
+				topCategoryName: string
+					description: "Safety category with the highest average score."
+					is_displayable: True
+				topCategoryAvgScore: string
+					description: "Average score for that category, e.g. '0.42'."
+					is_displayable: True
+				recentFlaggedJson: string
+					description: "JSON array of up to 10 recent flagged outputs with truncated text."
+					is_displayable: True
+
+		get_token_consumption:
+			description: "Returns token consumption grouped by user, model, prompt, or feature."
+			target: "apex://GetTokenConsumptionAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+				groupBy: string
+					description: "One of: user, model, prompt, feature. Defaults to 'model'."
+			outputs:
+				groupBy: string
+					description: "Echoes the groupBy used."
+					is_displayable: True
+				rowsJson: string
+					description: "JSON array of grouped token rows: groupKey, groupLabel, inputTokens, outputTokens, totalTokens."
+					is_displayable: True
+				topGroupKey: string
+					description: "Highest-token group key."
+					is_displayable: True
+				topGroupTokens: long
+					description: "Total tokens for the top group."
+				rowCount: integer
+					description: "Number of rows in rowsJson."
+
+	reasoning:
+		instructions: |
+			Pick the action:
+			- "Toxic" / "safety" / "flagged" → get_safety_overview. Lead with the toxic rate; if > 1%, flag as high.
+			- "Tokens" / "token consumption" / "tokens by X" → get_token_consumption. Pass groupBy explicitly.
+			Strip toxic content from the response — refer to flagged output IDs only when relevant.
+			If a tool returns "error":true in JSON, report the error message plainly.
+		actions:
+			pull_safety: @actions.get_safety_overview
+				description: "Pull safety overview"
+				with startDate = ...
+				with endDate = ...
+			pull_tokens: @actions.get_token_consumption
+				description: "Pull token consumption breakdown"
+				with startDate = ...
+				with endDate = ...
+				with groupBy = ...
+			go_to_drilldown: @utils.transition to @topic.drilldown
+				description: "Drill into a specific entity"
+			back: @utils.transition to @topic.topic_selector
+				description: "Route to a different topic"
+
+topic drilldown:
+	label: "Drill into an entity"
+	description: "Drill into a specific user, prompt template, model, or feature — return aggregate header plus recent truncated requests, or sample input/output pairs for a prompt."
+
+	actions:
+		get_entity_details:
+			description: "Returns aggregate header (request count, tokens, acceptance rate, unique users/prompts) plus up to 10 recent truncated requests for a specific User, PromptTemplate, Model, or Feature."
+			target: "apex://GetEntityDetailsAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+				entityType: string
+					description: "One of: User, PromptTemplate, Model, Feature."
+				entityKey: string
+					description: "Salesforce User Id for User, prompt dev name for PromptTemplate, model string for Model, feature string for Feature."
+				recentLimit: integer
+					description: "Max recent requests to return. Defaults to 10, capped at 10."
+			outputs:
+				entityLabel: string
+					description: "Resolved human-readable label."
+					is_displayable: True
+				requestCount: integer
+					description: "Total requests in the window for this entity."
+					is_displayable: True
+				totalTokens: long
+					description: "Total tokens (input + output) in the window."
+					is_displayable: True
+				acceptanceRateLabel: string
+					description: "Acceptance rate label, e.g. '78%'."
+					is_displayable: True
+				uniqueUserCount: integer
+					description: "Distinct users intersecting this entity in the window."
+				uniquePromptCount: integer
+					description: "Distinct prompt templates intersecting this entity in the window."
+				recentRequestsJson: string
+					description: "JSON array of up to 10 recent requests with truncated text."
+					is_displayable: True
+
+		get_prompt_outputs:
+			description: "Returns sample input/output pairs for a specific prompt template (truncated text only)."
+			target: "apex://GetPromptOutputsAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+				promptDevName: string
+					description: "Prompt template developer name (raw, unquoted)."
+				limitCount: integer
+					description: "Max output rows to return. Defaults to 10, capped at 25."
+			outputs:
+				outputsJson: string
+					description: "JSON array of prompt outputs with truncated text and feedback flags."
+					is_displayable: True
+				rowCount: integer
+					description: "Number of rows in outputsJson."
+
+	reasoning:
+		instructions: |
+			Pick the action:
+			- "Show details for user / prompt / model / feature X" → get_entity_details. Set entityType + entityKey from the question.
+			- "Show outputs / examples for prompt X" → get_prompt_outputs. Pass promptDevName.
+			Present the aggregate header first, then summarize the recent items briefly.
+			If a tool returns "error":true in JSON, report the error message plainly.
+		actions:
+			pull_entity: @actions.get_entity_details
+				description: "Pull entity drill-in"
+				with startDate = ...
+				with endDate = ...
+				with entityType = ...
+				with entityKey = ...
+				with recentLimit = ...
+			pull_outputs: @actions.get_prompt_outputs
+				description: "Pull sample prompt outputs"
+				with startDate = ...
+				with endDate = ...
+				with promptDevName = ...
+				with limitCount = ...
 			back: @utils.transition to @topic.topic_selector
 				description: "Route to a different topic"

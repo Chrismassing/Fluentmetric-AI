@@ -41,6 +41,17 @@
                 </div>
             </template>
 
+            <template lwc:if={hasError}>
+                <div class="slds-media slds-media_center">
+                    <div class="slds-media__figure">
+                        <lightning-icon icon-name="utility:warning" size="x-small" alternative-text="Error" variant="error"></lightning-icon>
+                    </div>
+                    <div class="slds-media__body">
+                        <p class="slds-text-color_error slds-text-body_small">{errorMessage}</p>
+                    </div>
+                </div>
+            </template>
+
             <template lwc:if={isEmpty}>
                 <p class="slds-text-color_weak slds-text-body_small">{emptyMessage}</p>
             </template>

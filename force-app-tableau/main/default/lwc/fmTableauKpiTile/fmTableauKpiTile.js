@@ -1,4 +1,4 @@
-import { LightningElement, api, wire } from 'lwc';
+import { LightningElement, api, track, wire } from 'lwc';
 import getKpiSummary from '@salesforce/apex/FmTableauNextController.getKpiSummary';
 import EMPTY_LABEL from '@salesforce/label/c.FM_TBL_Kpi_Empty';
 
@@ -6,25 +6,32 @@ export default class FmTableauKpiTile extends LightningElement {
     @api title = 'GenAI Snapshot';
     @api windowDays = 30;
 
+    @track startDate;
+    @track endDate;
+
     summary;
     error;
 
-    get range() {
+    connectedCallback() {
+        // Compute once at mount so the @wire cache key is stable. Recomputing
+        // Date.now() inside a getter on every render would invalidate the
+        // cache and re-fire the Apex call.
         const days = Number(this.windowDays) || 30;
         const end = new Date();
         const start = new Date(end);
         start.setDate(start.getDate() - days);
-        return { startDate: start.toISOString(), endDate: end.toISOString() };
+        this.startDate = start.toISOString();
+        this.endDate = end.toISOString();
     }
 
-    @wire(getKpiSummary, { startDate: '$range.startDate', endDate: '$range.endDate' })
+    @wire(getKpiSummary, { startDate: '$startDate', endDate: '$endDate' })
     handleSummary({ data, error }) {
         if (data) {
             this.summary = data;
             this.error = undefined;
         } else if (error) {
             this.summary = undefined;
-            this.error = error.body && error.body.message ? error.body.message : EMPTY_LABEL;
+            this.error = error.body && error.body.message ? error.body.message : null;
         }
     }
 
@@ -36,12 +43,20 @@ export default class FmTableauKpiTile extends LightningElement {
         return !!this.summary && !this.error;
     }
 
+    get hasError() {
+        return !!this.error;
+    }
+
     get isEmpty() {
-        return !this.isLoading && !this.hasData;
+        return !this.isLoading && !this.hasData && !this.hasError;
+    }
+
+    get errorMessage() {
+        return this.error;
     }
 
     get emptyMessage() {
-        return this.error || EMPTY_LABEL;
+        return EMPTY_LABEL;
     }
 
     get formattedRequests() {

@@ -25,6 +25,30 @@
         <value>Open in Tableau Next</value>
     </labels>
     <labels>
+        <fullName>FM_TBL_Launcher_Card_Title</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Launcher card title (App Builder default)</shortDescription>
+        <value>Explore in Tableau Next</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Launcher_Card_Subtitle</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Launcher card subtitle (App Builder default)</shortDescription>
+        <value>Drag-drop pivot freedom over your GenAI Audit data.</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Launcher_Error</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Launcher error fallback message</shortDescription>
+        <value>Could not load launcher target.</value>
+    </labels>
+    <labels>
         <fullName>FM_TBL_Launcher_Workspace_Path</fullName>
         <categories>FluentMetric AI for Tableau</categories>
         <language>en_US</language>
@@ -47,5 +71,45 @@
         <protected>false</protected>
         <shortDescription>Empty KPI tile state</shortDescription>
         <value>No GenAI audit data is available for the selected window.</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Agent_Adoption_Topic</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Adoption health agent topic label</shortDescription>
+        <value>Adoption health</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Agent_Cohorts_Topic</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Cohort retention agent topic label</shortDescription>
+        <value>Cohort retention</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Agent_Safety_Topic</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Safety and tokens agent topic label</shortDescription>
+        <value>Safety and tokens</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Agent_Drilldown_Topic</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Drill-down agent topic label</shortDescription>
+        <value>Drill into an entity</value>
+    </labels>
+    <labels>
+        <fullName>FM_TBL_Agent_Error_Envelope</fullName>
+        <categories>FluentMetric AI for Tableau</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Generic agent error envelope message</shortDescription>
+        <value>The Tableau Analyst agent could not complete that request. Please try again or check the FluentMetric AI for Tableau Next Setup page.</value>
     </labels>
 </CustomLabels>
