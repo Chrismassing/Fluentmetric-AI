@@ -535,6 +535,164 @@ private class CostCalculatorServiceTest {
         Assert.areEqual(Decimal.valueOf('0.1200'), r.discountedUsd, '25% off $0.16 = $0.12');
     }
 
+    // ───────── Direct helper coverage (Round 9 — coverage gap fill) ──────
+
+    @IsTest
+    static void testWorstConfidence_orderedDegradation() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        Assert.areEqual(
+            CostCalculatorService.CONFIDENCE_HIGH,
+            svc.worstConfidence(CostCalculatorService.CONFIDENCE_HIGH, CostCalculatorService.CONFIDENCE_HIGH)
+        );
+        Assert.areEqual(
+            CostCalculatorService.CONFIDENCE_ESTIMATED,
+            svc.worstConfidence(CostCalculatorService.CONFIDENCE_HIGH, CostCalculatorService.CONFIDENCE_ESTIMATED)
+        );
+        Assert.areEqual(
+            CostCalculatorService.CONFIDENCE_FALLBACK,
+            svc.worstConfidence(CostCalculatorService.CONFIDENCE_ESTIMATED, CostCalculatorService.CONFIDENCE_FALLBACK)
+        );
+        Assert.areEqual(
+            CostCalculatorService.CONFIDENCE_NOT_COSTED,
+            svc.worstConfidence(CostCalculatorService.CONFIDENCE_FALLBACK, CostCalculatorService.CONFIDENCE_NOT_COSTED)
+        );
+    }
+
+    @IsTest
+    static void testNormalizeModelKey_stripsDateAndVersionSuffixes() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        Assert.areEqual('', svc.normalizeModelKey(null));
+        Assert.areEqual('', svc.normalizeModelKey(''));
+        Assert.areEqual('gpt-4o', svc.normalizeModelKey('gpt-4o'));
+        Assert.areEqual('gpt-4o', svc.normalizeModelKey('gpt-4o-2024-11-20'));
+        // gpt-4 IS in the cache — stripping -mini hits the cached base.
+        Assert.areEqual('gpt-4', svc.normalizeModelKey('gpt-4-mini'));
+    }
+
+    @IsTest
+    static void testResolveConfidence_handlesNullAndBlankRate() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        Assert.areEqual(
+            CostCalculatorService.CONFIDENCE_NOT_COSTED,
+            svc.resolveConfidence('gpt-4o', null),
+            'null rate → NOT_COSTED'
+        );
+        FluentMetric_Rate_Card__mdt blankRate = new FluentMetric_Rate_Card__mdt();
+        blankRate.Model__c = '';
+        blankRate.Tier__c = 'Standard';
+        Assert.areEqual(
+            CostCalculatorService.CONFIDENCE_ESTIMATED,
+            svc.resolveConfidence('', blankRate),
+            'blank inputs → ESTIMATED'
+        );
+    }
+
+    @IsTest
+    static void testMatchRateCard_syntheticFallbackWhenNoFallbackRecord() {
+        // Cache contains only non-fallback records — no Is_Default_Fallback__c.
+        Map<String, FluentMetric_Rate_Card__mdt> m = new Map<String, FluentMetric_Rate_Card__mdt>();
+        m.put('gpt-4o', buildRate('gpt-4o', 'Standard', 4, 0.016, false));
+        CostCalculatorService.rateCardByModel = m;
+        seedSettings(0);
+
+        CostCalculatorService svc = new CostCalculatorService();
+        FluentMetric_Rate_Card__mdt card = svc.matchRateCard('absolutely-unknown');
+        Assert.areNotEqual(null, card, 'synthetic fallback returned');
+        Assert.areEqual('Synthetic-Zero', card.Model__c, 'synthetic fallback stub');
+        Assert.areEqual(true, card.Is_Default_Fallback__c, 'synthetic is fallback-flagged');
+    }
+
+    @IsTest
+    static void testTierRateFor_unknownTierFallsBackToStandard() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        // Standard, Basic, Advanced are explicit; everything else folds to Standard.
+        Assert.areEqual(2, svc.tierRateFor('Basic'));
+        Assert.areEqual(4, svc.tierRateFor('Standard'));
+        Assert.areEqual(16, svc.tierRateFor('Advanced'));
+        Assert.areEqual(4, svc.tierRateFor('Enterprise'), 'unknown tier → Standard default');
+        Assert.areEqual(4, svc.tierRateFor(null), 'null tier → Standard default');
+    }
+
+    @IsTest
+    static void testThresholds_useDefaultsWhenSettingsBlank() {
+        // Empty settings — exercise the `s.X__c == null ?` defaults.
+        FluentMetric_Cost_Settings__c s = new FluentMetric_Cost_Settings__c();
+        s.Enable_Cost_Metrics__c = true;
+        s.Flex_Credit_USD_Rate__c = null;
+        s.Tier_Basic_FC__c = null;
+        s.Tier_Standard_FC__c = null;
+        s.Tier_Advanced_FC__c = null;
+        s.Action_Flat_FC__c = null;
+        s.Prompt_Token_Threshold__c = null;
+        s.Action_Token_Threshold__c = null;
+        CostCalculatorService.settingsCache = s;
+
+        CostCalculatorService svc = new CostCalculatorService();
+        Assert.areEqual(2, svc.tierRateFor('Basic'), 'default 2 FC for Basic');
+        Assert.areEqual(4, svc.tierRateFor('Standard'), 'default 4 FC for Standard');
+        Assert.areEqual(16, svc.tierRateFor('Advanced'), 'default 16 FC for Advanced');
+        Assert.areEqual(20, svc.actionFlatFc(), 'default 20 FC for actions');
+        Assert.areEqual(2000L, svc.promptTokenThreshold(), 'default 2000-token threshold');
+        Assert.areEqual(10000L, svc.actionTokenThreshold(), 'default 10000-token action threshold');
+    }
+
+    @IsTest
+    static void testOverageMultiplier_guards() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        // null / zero / negative inputs all collapse to 1 (no overage).
+        Assert.areEqual(1, svc.overageMultiplierFor(null, 1, 100L));
+        Assert.areEqual(1, svc.overageMultiplierFor(0L, 1, 100L));
+        Assert.areEqual(1, svc.overageMultiplierFor(100L, null, 100L));
+        Assert.areEqual(1, svc.overageMultiplierFor(100L, 0, 100L));
+        Assert.areEqual(1, svc.overageMultiplierFor(100L, 1, null));
+        Assert.areEqual(1, svc.overageMultiplierFor(100L, 1, 0L));
+    }
+
+    @IsTest
+    static void testCostFromWallet_negativeOrZeroPath() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        // Negative or zero short-circuits to a zero-FC ACTUAL result.
+        CostCalculatorService.CostResult zeroOut = svc.costFromWallet(0);
+        Assert.areEqual(0L, zeroOut.flexCredits);
+        Assert.areEqual(CostCalculatorService.CONFIDENCE_ACTUAL, zeroOut.confidence);
+        Assert.areEqual(CostCalculatorService.SOURCE_WALLET, zeroOut.source);
+
+        CostCalculatorService.CostResult negativeOut = svc.costFromWallet(Decimal.valueOf('-5'));
+        Assert.areEqual(0L, negativeOut.flexCredits, 'negative coerces to zero');
+    }
+
+    @IsTest
+    static void testIsCostMetricsEnabled_offByDefault() {
+        // Reset cache to force a real getOrgDefaults() call.
+        CostCalculatorService.settingsCache = null;
+        CostCalculatorService svc = new CostCalculatorService();
+        // Fresh install — no record means `Enable_Cost_Metrics__c` is false.
+        Assert.isFalse(svc.isCostMetricsEnabled(), 'fresh install defaults to off');
+    }
+
+    @IsTest
+    static void testCostForRequests_skipsNullEntries() {
+        seedCache();
+        seedSettings(0);
+        CostCalculatorService svc = new CostCalculatorService();
+        // Pass a list with null mixed in — should not throw, returns 0.
+        List<SObject> rows = new List<SObject>{ null };
+        CostCalculatorService.CostResult r = svc.costForRequests(rows);
+        Assert.areEqual(0L, r.flexCredits, 'all-null list contributes nothing');
+    }
+
     @IsTest
     static void testLoadRateCards_RealMetadata() {
         // Reset caches so loadRateCards runs the SOQL path once.

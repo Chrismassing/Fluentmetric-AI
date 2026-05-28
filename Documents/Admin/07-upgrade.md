@@ -57,9 +57,17 @@ this release. Examples:
 
 - *"Permset adds new field-level read on `Enable_Wallet_Costs__c`"* — no
   action; the install handled it.
-- *"New Custom Metadata record needed: `FluentMetric_Entitlement_PermissionSet__mdt`
-  → `My_Custom_Source`"* — manual step; follow
-  [05-configure.md](05-configure.md).
+- *"Adoption denominator is now controlled by the
+  `FluentMetric_AI_Entitled_User` permission set"* — manual step; assign
+  the permset to every user expected to use Einstein Generative AI
+  features. The earlier `FluentMetric_Entitlement_PermissionSet__mdt`
+  configuration was removed in this release; assignment-based scope
+  replaces it. Follow [05-configure.md](05-configure.md).
+- *"Schedule `FluentMetricEntitlementSyncSchedulable` nightly"* — required
+  if you use the Tableau Next edition, otherwise the SDM-side
+  `Adoption_Rate_clc` reads stale data. The installer schedules it; verify
+  with `sf data soql query --query "SELECT CronExpression FROM CronTrigger
+  WHERE CronJobDetail.Name LIKE '%Entitlement%'"`.
 - *"Cost Tab now defaults to enabled"* — review your Custom Setting if you
   want to override the new default.
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FluentMetric_IsEntitled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>True when this user is assigned to the FluentMetric_AI_Entitled_User permission set. Stamped nightly by FluentMetricEntitlementSyncSchedulable so the Tableau Next semantic model can compute adoption rate without joining PermissionSetAssignment (which Tableau Next can&apos;t project as a User-keyed dimension). The Apex EntitlementService still resolves entitlement from PSA at runtime; this boolean is a denormalized projection for analytics only.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Marks this user as part of the FluentMetric AI adoption-denominator scope. Stamped nightly from PermissionSetAssignment — do not edit manually.</inlineHelpText>
+    <label>FluentMetric AI Entitled</label>
+    <trackHistory>false</trackHistory>
+    <type>Checkbox</type>
+</CustomField>

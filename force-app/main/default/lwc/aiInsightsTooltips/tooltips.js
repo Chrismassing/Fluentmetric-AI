@@ -67,9 +67,9 @@ export const TOOLTIPS = {
             'expand the User Adoption tab to see who, and target them for advanced training first.',
         entitledDenominator:
             'Adoption rate uses an entitled-user denominator: distinct active users in the range divided by ' +
-            'users assigned (directly or via PSG) to any FluentMetric_Entitlement_PermissionSet__mdt row marked ' +
-            'Is_Enabled__c = true. When no PS is configured the denominator falls back to total active org users ' +
-            'and a tip is shown so admins know the configuration step is missing.'
+            'users assigned to the FluentMetric_AI_Entitled_User permission set. When that permset has no ' +
+            'assignees in this org the denominator falls back to total active org users and a tip is shown ' +
+            'so admins know to assign the permset to the people expected to use Einstein Generative AI.'
     },
 
     // ─── User Adoption (Phase 2 retrofit) ────────────────────────────────
@@ -235,7 +235,7 @@ export const TOOLTIPS = {
         tabHeading:
             'Adoption shows you the journey from "could use AI" to "uses AI heavily" — funnel, leaderboard, per-user activity, feature breadth, and cohort retention all in one place.',
         funnelStage:
-            'Each funnel stage is the count of users that survived the previous gate: Active org users (anyone licensed) → Entitled (assigned to an AI permission set in FluentMetric_Entitlement_PermissionSet__mdt) → Active in window (made at least one request in the selected range).',
+            'Each funnel stage is the count of users that survived the previous gate: Active org users (anyone licensed) → Entitled (assigned to the FluentMetric_AI_Entitled_User permission set) → Active in window (made at least one request in the selected range).',
         contributorRank:
             'Top contributors are the highest-volume users in the date range. Toggle between Tokens (sum of input + output) and Requests (count of GenAIGatewayRequest__dlm rows) — the bar lengths normalize against the leader so the ranking is visually obvious.'
     },

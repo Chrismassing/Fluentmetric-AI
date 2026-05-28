@@ -1,38 +1,44 @@
 /**
  * Resolves the entitled-user denominator for FluentMetric AI adoption metrics.
  *
- * Configured entitlement sources come from
- * FluentMetric_Entitlement_PermissionSet__mdt. Each row pairs a developer name
- * with an Entitlement_Type__c picklist value; the resolver routes the name to
- * the appropriate query path:
- *   - PermissionSet      → PermissionSet.Name + PermissionSetAssignment
- *   - PermissionSetGroup → PermissionSetGroup.DeveloperName + PSA
- *                          (PSG membership is exposed directly on PSA, no
- *                          transitive walk required)
- *   - Profile            → Profile.Name + User.ProfileId
+ * The "entitled population" is the set of users assigned to a single, well-known
+ * permission set: FluentMetric_AI_Entitled_User. Admins assign that permset to
+ * every user who is expected to use Einstein Generative AI features; the
+ * Lightning dashboards and the Tableau Next adoption-rate metric both divide
+ * active users by this set.
  *
- * Multiple types coexist freely — the entitled-user set is the union across
- * all enabled rows, deduplicated by user Id.
+ * Why a permset rather than a Custom Metadata Type: assignment is a single
+ * one-click action in Setup (or a permset-license-style bulk script), it
+ * surfaces in standard reports, it composes with PSGs the customer already
+ * uses, and it doesn't require a deploy to change scope. Earlier versions of
+ * this service used a custom-metadata mapping table that named several
+ * permission sets / permission set groups / profiles as "entitled" — that
+ * extra indirection was removed in favor of "membership of one PS = in scope".
  *
  * Caching strategy: a single static cache lives for the duration of the
- * transaction. We deliberately avoid Platform Cache because PSA / Profile
- * writes have no event hook to invalidate the entry — short-lived staleness
- * within a single dashboard request is fine; cross-request staleness is not.
+ * transaction. We deliberately avoid Platform Cache because PSA writes have no
+ * event hook to invalidate the entry — short-lived staleness within a single
+ * dashboard request is fine; cross-request staleness is not.
  *
  * Failure modes (all flip `entitledFallback = true` and switch the denominator
  * to total active org users):
- *   - CMT empty or all rows disabled
- *   - None of the configured names match an existing PS / PSG / Profile
- *   - Any of the resolution queries throw (FLS, missing object, etc.)
- *   - The total-user fallback query also throws (very rare; returns -1)
+ *   - FluentMetric_AI_Entitled_User permset isn't deployed in this org
+ *   - Nobody is assigned to it (zero PSA rows)
+ *   - PermissionSet / PSA queries throw (FLS, schema absent, etc.)
+ *   - The total-user fallback query itself throws (very rare; returns -1)
  */
 public with sharing class EntitlementService implements IEntitlementService {
+    /**
+     * The single permission set that defines the entitled-user scope. Customers
+     * assign this to every user who *should* be using Einstein GenAI; assignees
+     * become the adoption-rate denominator.
+     */
+    public static final String ENTITLEMENT_PERMSET_NAME = 'FluentMetric_AI_Entitled_User';
+
     @TestVisible
     private static EntitlementSnapshotDTO CACHED_SNAPSHOT;
     @TestVisible
     private static Set<Id> CACHED_ENTITLED_IDS;
-    @TestVisible
-    private static List<String> CACHED_CONFIGURED_NAMES;
 
     public Set<Id> getEntitledUserIds() {
         if (CACHED_ENTITLED_IDS != null) {
@@ -42,20 +48,20 @@ public with sharing class EntitlementService implements IEntitlementService {
         return CACHED_ENTITLED_IDS == null ? new Set<Id>() : CACHED_ENTITLED_IDS;
     }
 
+    /**
+     * Returns the configured permset name(s) so UIs can render "Adoption is
+     * computed against assignees of {names}" hints. With the post-CMT model
+     * this is always a single-element list, but the interface keeps List
+     * shape to avoid breaking the agent action's existing label join.
+     */
     public List<String> getConfiguredPermissionSets() {
-        if (CACHED_CONFIGURED_NAMES != null) {
-            return CACHED_CONFIGURED_NAMES;
-        }
-        loadEntitlement();
-        return CACHED_CONFIGURED_NAMES == null ? new List<String>() : CACHED_CONFIGURED_NAMES;
+        return new List<String>{ ENTITLEMENT_PERMSET_NAME };
     }
 
     public EntitlementSnapshotDTO getSnapshot(Set<String> activeUserIdStrings) {
         loadEntitlement();
         EntitlementSnapshotDTO snap = new EntitlementSnapshotDTO();
-        snap.configuredPermissionSets = CACHED_CONFIGURED_NAMES == null
-            ? new List<String>()
-            : new List<String>(CACHED_CONFIGURED_NAMES);
+        snap.configuredPermissionSets = new List<String>{ ENTITLEMENT_PERMSET_NAME };
         snap.totalActiveOrgUsers = countActiveOrgUsers();
         snap.entitledFallback = (CACHED_SNAPSHOT == null || CACHED_SNAPSHOT.entitledFallback);
 
@@ -102,63 +108,27 @@ public with sharing class EntitlementService implements IEntitlementService {
     }
 
     @TestVisible
-    private static final String TYPE_PERMISSION_SET = 'PermissionSet';
-    @TestVisible
-    private static final String TYPE_PERMISSION_SET_GROUP = 'PermissionSetGroup';
-    @TestVisible
-    private static final String TYPE_PROFILE = 'Profile';
-
-    @TestVisible
     private static void loadEntitlement() {
         if (CACHED_ENTITLED_IDS != null) {
             return;
         }
         CACHED_ENTITLED_IDS = new Set<Id>();
-        CACHED_CONFIGURED_NAMES = new List<String>();
         CACHED_SNAPSHOT = new EntitlementSnapshotDTO();
 
-        Map<String, Set<String>> namesByType = readConfiguredRows();
-        CACHED_CONFIGURED_NAMES = flattenConfigured(namesByType);
-        if (CACHED_CONFIGURED_NAMES.isEmpty()) {
-            CACHED_SNAPSHOT.entitledFallback = true;
-            return;
-        }
-
         try {
-            Set<String> psNames = namesByType.get(TYPE_PERMISSION_SET);
-            Set<String> psgNames = namesByType.get(TYPE_PERMISSION_SET_GROUP);
-            Set<String> profileNames = namesByType.get(TYPE_PROFILE);
-
-            // Permission sets + permission set groups share the
-            // PermissionSetAssignment-based path because PSA exposes both
-            // PermissionSetId and PermissionSetGroupId directly.
-            Set<Id> psIds = (psNames == null || psNames.isEmpty()) ? new Set<Id>() : resolvePermissionSetIds(psNames);
-            Set<Id> psgIds = (psgNames == null || psgNames.isEmpty())
-                ? new Set<Id>()
-                : resolvePermissionSetGroupIds(psgNames);
-            Set<Id> profileIds = (profileNames == null || profileNames.isEmpty())
-                ? new Set<Id>()
-                : resolveProfileIds(profileNames);
-
-            if (psIds.isEmpty() && psgIds.isEmpty() && profileIds.isEmpty()) {
-                // None of the configured names match anything in this org.
+            Set<Id> psIds = resolvePermissionSetIds(new Set<String>{ ENTITLEMENT_PERMSET_NAME });
+            if (psIds.isEmpty()) {
+                // Permset not deployed in this org → fallback.
                 CACHED_SNAPSHOT.entitledFallback = true;
                 return;
             }
 
-            if (!psIds.isEmpty() || !psgIds.isEmpty()) {
-                CACHED_ENTITLED_IDS.addAll(queryEntitledUsersByPsa(psIds, psgIds));
-            }
-            if (!profileIds.isEmpty()) {
-                CACHED_ENTITLED_IDS.addAll(queryEntitledUsersByProfile(profileIds));
-            }
-
+            CACHED_ENTITLED_IDS.addAll(queryEntitledUsersByPsa(psIds));
             CACHED_SNAPSHOT.entitledCount = CACHED_ENTITLED_IDS.size();
             CACHED_SNAPSHOT.entitledFallback = CACHED_ENTITLED_IDS.isEmpty();
         } catch (Exception e) {
-            // PermissionSet / PSGroup / PSA / Profile / User inaccessible to the
-            // running user, or schema absent — gracefully fall back to "all
-            // active users".
+            // PermissionSet / PSA inaccessible to the running user, or schema
+            // absent — gracefully fall back to "all active users".
             CACHED_ENTITLED_IDS = new Set<Id>();
             CACHED_SNAPSHOT.entitledFallback = true;
         }
@@ -179,43 +149,14 @@ public with sharing class EntitlementService implements IEntitlementService {
     }
 
     @TestVisible
-    private static Set<Id> resolvePermissionSetGroupIds(Set<String> names) {
-        Set<Id> out = new Set<Id>();
-        for (PermissionSetGroup psg : [
-            SELECT Id, DeveloperName
-            FROM PermissionSetGroup
-            WHERE DeveloperName IN :names
-            WITH USER_MODE
-        ]) {
-            out.add(psg.Id);
-        }
-        return out;
-    }
-
-    @TestVisible
-    private static Set<Id> resolveProfileIds(Set<String> names) {
-        Set<Id> out = new Set<Id>();
-        for (Profile p : [
-            SELECT Id, Name
-            FROM Profile
-            WHERE Name IN :names
-            WITH USER_MODE
-        ]) {
-            out.add(p.Id);
-        }
-        return out;
-    }
-
-    @TestVisible
-    private static Set<Id> queryEntitledUsersByPsa(Set<Id> psIds, Set<Id> psgIds) {
+    private static Set<Id> queryEntitledUsersByPsa(Set<Id> psIds) {
         Set<Id> out = new Set<Id>();
         Date today = Date.today();
         for (PermissionSetAssignment psa : [
             SELECT AssigneeId
             FROM PermissionSetAssignment
             WHERE
-                (PermissionSetId IN :psIds
-                OR PermissionSetGroupId IN :psgIds)
+                PermissionSetId IN :psIds
                 AND (ExpirationDate = NULL
                 OR ExpirationDate >= :today)
                 AND Assignee.IsActive = TRUE
@@ -223,79 +164,6 @@ public with sharing class EntitlementService implements IEntitlementService {
             LIMIT 50000
         ]) {
             out.add(psa.AssigneeId);
-        }
-        return out;
-    }
-
-    @TestVisible
-    private static Set<Id> queryEntitledUsersByProfile(Set<Id> profileIds) {
-        Set<Id> out = new Set<Id>();
-        for (User u : [
-            SELECT Id
-            FROM User
-            WHERE ProfileId IN :profileIds AND IsActive = TRUE
-            WITH USER_MODE
-            LIMIT 50000
-        ]) {
-            out.add(u.Id);
-        }
-        return out;
-    }
-
-    /**
-     * Bucket enabled CMT rows by Entitlement_Type__c so each type can be routed
-     * to the right resolution query. Rows with a blank or unknown type fall
-     * back to PermissionSet for backwards compatibility with seed records
-     * authored before the picklist was added.
-     */
-    @TestVisible
-    private static Map<String, Set<String>> readConfiguredRows() {
-        Map<String, Set<String>> out = new Map<String, Set<String>>{
-            TYPE_PERMISSION_SET => new Set<String>(),
-            TYPE_PERMISSION_SET_GROUP => new Set<String>(),
-            TYPE_PROFILE => new Set<String>()
-        };
-        try {
-            for (FluentMetric_Entitlement_PermissionSet__mdt row : [
-                SELECT Permission_Set_Developer_Name__c, Entitlement_Type__c, Is_Enabled__c
-                FROM FluentMetric_Entitlement_PermissionSet__mdt
-                WHERE Is_Enabled__c = TRUE
-            ]) {
-                if (String.isBlank(row.Permission_Set_Developer_Name__c)) {
-                    continue;
-                }
-                String t = String.isBlank(row.Entitlement_Type__c) ? TYPE_PERMISSION_SET : row.Entitlement_Type__c;
-                Set<String> bucket = out.get(t);
-                if (bucket == null) {
-                    // Unknown type value — fold into PermissionSet so the row
-                    // isn't silently dropped on package upgrade.
-                    bucket = out.get(TYPE_PERMISSION_SET);
-                }
-                bucket.add(row.Permission_Set_Developer_Name__c);
-            }
-        } catch (Exception e) {
-            // CMT unavailable — return empty buckets so caller drops to fallback.
-        }
-        return out;
-    }
-
-    @TestVisible
-    private static List<String> flattenConfigured(Map<String, Set<String>> namesByType) {
-        List<String> out = new List<String>();
-        if (namesByType == null) {
-            return out;
-        }
-        Set<String> seen = new Set<String>();
-        for (Set<String> bucket : namesByType.values()) {
-            if (bucket == null) {
-                continue;
-            }
-            for (String n : bucket) {
-                if (String.isNotBlank(n) && !seen.contains(n)) {
-                    seen.add(n);
-                    out.add(n);
-                }
-            }
         }
         return out;
     }
@@ -330,6 +198,5 @@ public with sharing class EntitlementService implements IEntitlementService {
     public static void clearCacheForTests() {
         CACHED_SNAPSHOT = null;
         CACHED_ENTITLED_IDS = null;
-        CACHED_CONFIGURED_NAMES = null;
     }
 }

@@ -1,0 +1,71 @@
+{
+  "workspace_label": "FluentMetric AI",
+  "pattern": "f_layout",
+  "pattern_args": {
+    "title_text": "FluentMetric AI — Tokens & Safety"
+  },
+  "metrics": [
+    "Total_Tokens_mtc",
+    "Avg_Tokens_Per_Request_mtc",
+    "Toxic_Rate_mtc"
+  ],
+  "filters": [
+    { "fieldName": "Model" },
+    { "fieldName": "Feature" },
+    { "fieldName": "Department" },
+    { "fieldName": "Title" },
+    { "fieldName": "Timestamp1" },
+    { "fieldName": "Is_Toxicity_Detected" }
+  ],
+  "visualizations": [
+    {
+      "name": "Tokens_by_Model",
+      "label": "Total Tokens by Model",
+      "template": "revenue_by_category",
+      "fields": {
+        "category": "Model",
+        "amount": "Total_Tokens_clc"
+      },
+      "color_dim": "Feature"
+    },
+    {
+      "name": "Tokens_Trend_by_Model",
+      "label": "Token Consumption Trend by Model",
+      "template": "multi_series_line",
+      "fields": {
+        "date": "Timestamp1",
+        "measure": "Total_Tokens_clc",
+        "color_dim": "Model"
+      }
+    },
+    {
+      "name": "Daily_Toxic_Rate_Trend",
+      "label": "Daily Toxic Rate Trend",
+      "template": "trend_over_time",
+      "fields": {
+        "date": "Timestamp1",
+        "measure": "Toxic_Rate_clc"
+      }
+    },
+    {
+      "name": "Toxicity_by_Feature_and_Model",
+      "label": "Toxic Rate by Feature and Model",
+      "template": "heatmap_grid",
+      "fields": {
+        "row_dim": "Feature",
+        "col_dim": "Model",
+        "measure": "Toxic_Rate_clc"
+      }
+    },
+    {
+      "name": "Tokens_by_Department_and_Model",
+      "label": "Tokens by Department and Model",
+      "template": "stacked_bar_by_dimension",
+      "fields": {
+        "category": "Department",
+        "stack_dim": "Model",
+        "amount": "Total_Tokens_clc"
+      }
+    }
+  ]
+}

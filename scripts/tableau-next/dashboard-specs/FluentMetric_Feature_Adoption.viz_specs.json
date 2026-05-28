@@ -1,0 +1,73 @@
+{
+  "workspace_label": "FluentMetric AI",
+  "pattern": "f_layout",
+  "pattern_args": {
+    "title_text": "FluentMetric AI — Feature Adoption"
+  },
+  "metrics": [
+    "Active_Users_mtc",
+    "Total_Tokens_mtc",
+    "Avg_Tokens_Per_Request_mtc"
+  ],
+  "filters": [
+    { "fieldName": "Feature" },
+    { "fieldName": "Department" },
+    { "fieldName": "Title" },
+    { "fieldName": "Model" },
+    { "fieldName": "Timestamp1" },
+    { "fieldName": "Username" }
+  ],
+  "visualizations": [
+    {
+      "name": "Feature_Breadth_vs_Depth",
+      "label": "Feature Breadth vs Depth",
+      "template": "scatter_correlation",
+      "fields": {
+        "x_measure": "Distinct_Active_Users_clc",
+        "y_measure": "Avg_Tokens_Per_Request_clc",
+        "category": "Feature"
+      },
+      "color_dim": "Feature"
+    },
+    {
+      "name": "Feature_Trend_Over_Time",
+      "label": "Active Users Trend by Feature",
+      "template": "multi_series_line",
+      "fields": {
+        "date": "Timestamp1",
+        "measure": "Distinct_Active_Users_clc",
+        "color_dim": "Feature"
+      }
+    },
+    {
+      "name": "Active_Users_by_Feature",
+      "label": "Active Users by Feature",
+      "template": "revenue_by_category",
+      "fields": {
+        "category": "Feature",
+        "amount": "Distinct_Active_Users_clc"
+      },
+      "color_dim": "Department"
+    },
+    {
+      "name": "Feature_Mix_by_Department",
+      "label": "Feature Mix by Department",
+      "template": "stacked_bar_by_dimension",
+      "fields": {
+        "category": "Department",
+        "stack_dim": "Feature",
+        "amount": "Distinct_Active_Users_clc"
+      }
+    },
+    {
+      "name": "Tokens_by_Feature_and_Model",
+      "label": "Tokens by Feature and Model",
+      "template": "heatmap_grid",
+      "fields": {
+        "row_dim": "Feature",
+        "col_dim": "Model",
+        "measure": "Total_Tokens_clc"
+      }
+    }
+  ]
+}

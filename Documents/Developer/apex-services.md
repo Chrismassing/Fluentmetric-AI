@@ -496,31 +496,42 @@ public interface IEntitlementService {
 }
 
 public with sharing class EntitlementService implements IEntitlementService {
-    // Buckets the configured CMT rows by Entitlement_Type__c
-    // (PermissionSet / PermissionSetGroup / Profile) and routes each to
-    // the right query path. Static transaction-scoped cache; no Platform
-    // Cache (PSA writes have no event hook for invalidation).
+    // Single hardcoded permset: FluentMetric_AI_Entitled_User. Static
+    // transaction-scoped cache; no Platform Cache (PSA writes have no event
+    // hook for invalidation).
+
+    public static final String ENTITLEMENT_PERMSET_NAME = 'FluentMetric_AI_Entitled_User';
 
     public Set<Id> getEntitledUserIds() { ... }
-    public List<String> getConfiguredPermissionSets() { ... }
+    public List<String> getConfiguredPermissionSets() {
+        return new List<String>{ ENTITLEMENT_PERMSET_NAME };
+    }
     public EntitlementSnapshotDTO getSnapshot(Set<String> activeUserIdStrings) {
-        // 1. Load + bucket CMT rows
-        // 2. Resolve names: PermissionSet.Name / PSG.DeveloperName / Profile.Name
-        // 3. Query users:
-        //      PSA WHERE PermissionSetId IN :psIds OR PermissionSetGroupId IN :psgIds
+        // 1. Resolve PermissionSet.Id WHERE Name = ENTITLEMENT_PERMSET_NAME
+        // 2. Query PSA WHERE PermissionSetId = :id
+        //          AND (ExpirationDate IS NULL OR ExpirationDate >= TODAY)
         //          AND Assignee.IsActive = TRUE
-        //      User WHERE ProfileId IN :profileIds AND IsActive = TRUE
-        // 4. Compute adoptionRate = (active ∩ entitled) / entitled, [0, 1.0]
-        // 5. Any failure ⇒ entitledFallback = true, denominator = total active users
+        // 3. Compute adoptionRate = (active ∩ entitled) / entitled, [0, 1.0]
+        // 4. Any failure ⇒ entitledFallback = true, denominator = total active users
     }
 }
 ```
 
-**Configuration:** `FluentMetric_Entitlement_PermissionSet__mdt` rows.
-Each row has `Permission_Set_Developer_Name__c` (the source dev name),
-`Entitlement_Type__c` (`PermissionSet` / `PermissionSetGroup` / `Profile`),
-and `Is_Enabled__c`. Rows with a blank or unknown type fold into the
-`PermissionSet` bucket so package upgrades don't silently drop them.
+**Configuration:** the `FluentMetric_AI_Entitled_User` permission set ships
+with the package. Admins assign it to every user expected to use Einstein
+Generative AI features; assignees become the adoption-rate denominator.
+The earlier `FluentMetric_Entitlement_PermissionSet__mdt` indirection
+(per-row `Entitlement_Type__c` over PS / PSG / Profile names) was removed
+in favor of "membership of one PS = in scope" — single source of truth,
+one-click assignment in Setup, no deploy required to change scope.
+
+**Tableau Next projection:** `User.FluentMetric_IsEntitled__c` (Checkbox) is
+stamped nightly from PSA by `FluentMetricEntitlementSyncSchedulable`. The
+field projects into `ssot__User__dlm` so the SDM can compute
+`Distinct_Entitled_Users_clc` and `Adoption_Rate_clc` without joining PSA
+(which Data Cloud doesn't project as a User-keyed dimension). Lightning
+adoption math still resolves entitlement live from PSA; the boolean is
+analytics-only.
 
 **Tests** use `EntitlementServiceMock` for deterministic snapshots.
 `AiInsightsService` accepts an `IEntitlementService` via constructor

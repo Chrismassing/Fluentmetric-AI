@@ -115,28 +115,33 @@ schema and the prod-only constraint disclaimer.
 ### Layer 4d: EntitlementService.cls (Adoption Denominator)
 
 Resolves the **entitled-user denominator** for adoption analytics. Reads
-enabled rows from `FluentMetric_Entitlement_PermissionSet__mdt`, buckets
-them by `Entitlement_Type__c` (`PermissionSet` / `PermissionSetGroup` /
-`Profile`), and routes each bucket to the right query path:
+the assignees of a single, well-known permission set:
+`FluentMetric_AI_Entitled_User`. Admins assign this permset to every user
+expected to use Einstein Generative AI features; assignees become the
+adoption-rate denominator.
 
-- **PermissionSet** → `PermissionSet.Name` + `PermissionSetAssignment.PermissionSetId`
-- **PermissionSetGroup** → `PermissionSetGroup.DeveloperName` + `PermissionSetAssignment.PermissionSetGroupId` (PSA exposes PSG membership directly)
-- **Profile** → `Profile.Name` + `User.ProfileId`
-
-The entitled-user set is the union across all enabled rows, deduplicated by
-user Id. Active-only filtering: PSA `(ExpirationDate = NULL OR >= TODAY)` +
-`Assignee.IsActive = TRUE`; profile path filters `User.IsActive = TRUE`.
+Resolution path: `PermissionSet.Name = 'FluentMetric_AI_Entitled_User'` →
+`PermissionSetAssignment.PermissionSetId IN :psIds` with
+`(ExpirationDate = NULL OR >= TODAY)` and `Assignee.IsActive = TRUE`.
 
 `getSnapshot(activeUserIds)` returns counts plus `adoptionRate = (active ∩
-entitled) / entitled`, bounded to [0, 1.0]. Any failure mode (CMT empty,
-zero matching names in org, query exception, FLS) flips
+entitled) / entitled`, bounded to [0, 1.0]. Any failure mode (permset not
+deployed, zero assignees, PSA query throws, FLS) flips
 `entitledFallback = true` and the denominator silently switches to "all
 active org users" so dashboards never break. Results are cached in static
 transaction-scoped fields — Platform Cache is intentionally avoided because
-PSA/Profile writes have no event hook to invalidate the entry.
+PSA writes have no event hook to invalidate the entry.
 
 `AiInsightsService` accepts an `IEntitlementService` via constructor
 injection; tests use `EntitlementServiceMock` for deterministic snapshots.
+
+**Tableau Next projection:** `FluentMetricEntitlementSyncSchedulable` runs
+nightly and stamps `User.FluentMetric_IsEntitled__c` from the same PSA
+query. The boolean projects into `ssot__User__dlm.Is_Entitled` so the SDM
+can compute `Distinct_Entitled_Users_clc` and `Adoption_Rate_clc` without
+joining PSA (which Data Cloud doesn't surface as a User-keyed dimension).
+The Lightning side never reads this boolean — it resolves entitlement live
+from PSA every transaction.
 
 ### Layer 4b: UserResolverService.cls (Reference Data)
 

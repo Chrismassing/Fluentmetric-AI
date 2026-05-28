@@ -1,0 +1,44 @@
+[
+  {
+    "apiName": "GenAIGatewayRequest_dlm",
+    "label": "GenAI Gateway Request",
+    "dataObjectName": "GenAIGatewayRequest__dlm",
+    "dataObjectType": "Dmo"
+  },
+  {
+    "apiName": "GenAIGeneration_dlm",
+    "label": "GenAI Generation",
+    "dataObjectName": "GenAIGeneration__dlm",
+    "dataObjectType": "Dmo"
+  },
+  {
+    "apiName": "GenAIFeedback_dlm",
+    "label": "GenAI Feedback",
+    "dataObjectName": "GenAIFeedback__dlm",
+    "dataObjectType": "Dmo"
+  },
+  {
+    "apiName": "GenAIFeedbackDetail_dlm",
+    "label": "GenAI Feedback Detail",
+    "dataObjectName": "GenAIFeedbackDetail__dlm",
+    "dataObjectType": "Dmo"
+  },
+  {
+    "apiName": "GenAIContentCategory_dlm",
+    "label": "GenAI Content Category",
+    "dataObjectName": "GenAIContentCategory__dlm",
+    "dataObjectType": "Dmo"
+  },
+  {
+    "apiName": "GenAIContentQuality_dlm",
+    "label": "GenAI Content Quality",
+    "dataObjectName": "GenAIContentQuality__dlm",
+    "dataObjectType": "Dmo"
+  },
+  {
+    "apiName": "User_dlm",
+    "label": "User",
+    "dataObjectName": "ssot__User__dlm",
+    "dataObjectType": "Dmo"
+  }
+]

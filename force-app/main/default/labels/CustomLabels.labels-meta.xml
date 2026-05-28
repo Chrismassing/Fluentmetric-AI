@@ -405,7 +405,7 @@
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>Overview - tip when entitled denominator falls back</shortDescription>
-        <value>No AI permission set is configured. Add rows to FluentMetric_Entitlement_PermissionSet__mdt to track adoption against an entitled population.</value>
+        <value>The FluentMetric_AI_Entitled_User permission set has no assignees in this org, so adoption is computed against all active users. Assign that permset to the people expected to use Einstein Generative AI to scope the denominator.</value>
     </labels>
     <labels>
         <fullName>FM_Adoption_Cohort_Column</fullName>

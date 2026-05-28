@@ -82,12 +82,20 @@ Cloud permission issue on the running user.
 Symptom: numbers don't match what you expect.
 
 1. Open the Adoption tab. Hover the funnel — is `entitledFallback=true`
-   shown? If yes, the entitlement CMT didn't resolve any users; see
+   shown? If yes, the `FluentMetric_AI_Entitled_User` permission set has
+   no assignees in this org and the denominator falls back to all active
+   users. Assign that permset to every user expected to use Einstein
+   Generative AI features; see
    [05-configure.md §2](05-configure.md#2-adoption-denominator-entitled-user-count).
 2. If `entitledFallback=false` but the rate looks wrong: the denominator
-   is the configured Permission Sets / PSGs / Profiles. If you've recently
-   added a new entitlement source, add it to
-   `FluentMetric_Entitlement_PermissionSet__mdt`.
+   is the assignee count of `FluentMetric_AI_Entitled_User`. Verify the
+   assignment list in Setup → Permission Sets → FluentMetric AI Entitled
+   User → Manage Assignments matches who you expect to be in scope.
+3. Tableau Next adoption KPI lagging the Lightning number: the Tableau
+   denominator reads `User.FluentMetric_IsEntitled__c` which is stamped
+   nightly by `FluentMetricEntitlementSyncSchedulable`. Force a refresh
+   by re-running `System.schedule` of that class — the Lightning side
+   resolves PSA live and updates immediately.
 
 ## "Explorer drill panel shows nothing"
 

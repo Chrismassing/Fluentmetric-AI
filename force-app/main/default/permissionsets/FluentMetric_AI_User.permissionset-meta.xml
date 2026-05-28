@@ -80,6 +80,27 @@
         <apexClass>WalletAggregateDTO</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>EntitlementService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>IEntitlementService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EntitlementSnapshotDTO</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>FluentMetricEntitlementSyncSchedulable</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <fieldPermissions>
+        <field>User.FluentMetric_IsEntitled__c</field>
+        <readable>true</readable>
+        <editable>false</editable>
+    </fieldPermissions>
     <objectPermissions>
         <object>FluentMetric_Cost_Settings__c</object>
         <allowRead>true</allowRead>

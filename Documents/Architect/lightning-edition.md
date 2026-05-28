@@ -27,38 +27,43 @@ Detailed admin checklist: [../Admin/01-prerequisites.md](../Admin/01-prerequisit
   [../Developer/components.md](../Developer/components.md).
 - **Lightning App + Tab + FlexiPage:** `FluentMetric_AI`,
   `FluentMetric_AI_Dashboard`.
-- **Permission Set:** `FluentMetric_AI_User`.
+- **Permission Sets:**
+  - `FluentMetric_AI_User` — grants access to the dashboards and Apex services.
+  - `FluentMetric_AI_Entitled_User` — defines the **adoption-denominator scope**.
+    Admins assign it to every user expected to use Einstein Generative AI;
+    assignees become the denominator of the adoption rate. Grants no
+    functional access — runtime AI permissions still come from
+    Einstein Generative AI User / Prompt Template User / etc.
 - **Custom Setting** `FluentMetric_Cost_Settings__c` — per-org Flex Credit
   rate, fallback model, Wallet toggle.
 - **Custom Metadata Types:**
   - `FluentMetric_Cost_RateCard__mdt` — per-model FC/USD rate cards.
-  - `FluentMetric_Entitlement_PermissionSet__mdt` — declares which sources
-    define the **entitled-user denominator** for adoption analytics. Each row
-    pairs a developer name with an `Entitlement_Type__c` picklist value
-    (`PermissionSet`, `PermissionSetGroup`, or `Profile`); the resolver routes
-    to the right query path. Three seed rows ship: `Prompt_Template_User`,
-    `Einstein_Generative_AI_User`, `Prompt_Template_Manager` (all
-    `PermissionSet`). When the CMT is empty, no row matches the org, or any
-    resolution query throws, the engine flips `entitledFallback = true` and
-    falls back to "all active users" so the dashboards never break.
+- **User custom field** `FluentMetric_IsEntitled__c` (Checkbox) — denormalized
+  projection of "user is assigned to the entitled permset". Stamped nightly
+  by `FluentMetricEntitlementSyncSchedulable` from PSA so the Tableau Next
+  semantic model can compute adoption rate without joining PSA. Lightning
+  adoption math still resolves entitlement live; the boolean is analytics-only.
 - **Message channels** for date and filter coordination across LWCs.
 
 ## Design rationale
 
-### Adoption denominator via CMT, not hard-coded
+### Adoption denominator via a single permission set
 
-Different orgs grant Einstein GenAI capability differently — some via a single
-Permission Set, others via a Permission Set Group, others via a Profile.
-Encoding the denominator in `FluentMetric_Entitlement_PermissionSet__mdt`
-lets admins tune which sources count *without an Apex change*. The
-`entitledFallback` flag preserves dashboard rendering when the CMT is
-misconfigured, trading visible accuracy (a tooltip) for never breaking the UI.
+Different orgs grant Einstein GenAI capability differently, so the original
+design used a CMT mapping table to enumerate which permission sets / PSGs /
+profiles defined "entitled". That extra indirection was removed in favor of
+a single, well-known permission set: `FluentMetric_AI_Entitled_User`.
+Admins assign that permset to the people they want measured; assignment is
+a one-click action in Setup, surfaces in standard reports, composes with
+PSGs the customer already uses, and doesn't require a deploy to change scope.
+
+When the permset has no assignees (or the PSA query fails) the engine flips
+`entitledFallback = true` and falls back to "all active users" so the
+dashboards never break — it's a config signal, not a bug.
 
 Adoption rate formula: `(active ∩ entitled) / entitled`, bounded to [0, 1.0].
-When `entitledFallback=true` shows in the funnel tooltip, the denominator
-silently switched to "all active users" — that's a config signal, not a bug.
 
-Admin-side runbook for the CMT lives at
+Admin-side runbook for the permset lives at
 [../Admin/05-configure.md](../Admin/05-configure.md).
 
 ### Wallet-first cost engine

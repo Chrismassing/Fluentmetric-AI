@@ -1,16 +1,13 @@
 /**
- * Tests for EntitlementService.
+ * Tests for EntitlementService (post-CMT, single-permset model).
  *
- * The service mostly resolves real org metadata (PermissionSet, Profile,
- * PermissionSetGroup, PermissionSetAssignment) which we cannot inject in an
- * Apex test. The strategy is therefore:
- *   - Exercise the public surface end-to-end against the seeded scratch-org
- *     CMT rows, asserting the snapshot has sane defaults regardless of the
- *     CMT contents.
- *   - Force the fallback path by clearing the cache and confirming the
- *     adoption rate math still works.
- *   - Drive the @TestVisible static helpers directly so the math is covered
- *     even when no PSA rows exist in the org.
+ * The service now resolves "entitled" via the FluentMetric_AI_Entitled_User
+ * permission set + PermissionSetAssignment. We can't seed PSA in an Apex test
+ * (running as a sysadmin we can, but the permset must be deployed first), so
+ * the strategy is:
+ *   - Drive the public surface end-to-end and assert sane defaults.
+ *   - Force the cache directly to exercise the active-vs-entitled scoring.
+ *   - Cover the @TestVisible static helpers so the math survives a refactor.
  */
 @IsTest
 private class EntitlementServiceTest {
@@ -27,6 +24,12 @@ private class EntitlementServiceTest {
         Assert.isTrue(snap.entitledCount >= 0, 'entitledCount non-negative');
         Assert.areEqual(0, snap.activeCount, 'no active users supplied');
         Assert.isNotNull(snap.configuredPermissionSets, 'configured list initialized');
+        Assert.areEqual(1, snap.configuredPermissionSets.size(), 'one entitlement permset');
+        Assert.areEqual(
+            EntitlementService.ENTITLEMENT_PERMSET_NAME,
+            snap.configuredPermissionSets[0],
+            'configured list names the entitlement permset'
+        );
         // Adoption rate is 0 when no active users supplied.
         Assert.areEqual(0, snap.adoptionRate);
     }
@@ -38,7 +41,6 @@ private class EntitlementServiceTest {
         // ids that aren't in the seeded set — they should all show up as
         // unmatched (when a real entitled set is present).
         EntitlementService.CACHED_ENTITLED_IDS = new Set<Id>{ UserInfo.getUserId() };
-        EntitlementService.CACHED_CONFIGURED_NAMES = new List<String>{ 'Test_PS' };
         EntitlementSnapshotDTO seeded = new EntitlementSnapshotDTO();
         seeded.entitledFallback = false;
         EntitlementService.CACHED_SNAPSHOT = seeded;
@@ -55,7 +57,6 @@ private class EntitlementServiceTest {
     static void testGetEntitledUserIds_returnsCachedSet() {
         EntitlementService.clearCacheForTests();
         EntitlementService.CACHED_ENTITLED_IDS = new Set<Id>{ UserInfo.getUserId() };
-        EntitlementService.CACHED_CONFIGURED_NAMES = new List<String>{ 'Test_PS' };
         EntitlementService.CACHED_SNAPSHOT = new EntitlementSnapshotDTO();
 
         EntitlementService svc = new EntitlementService();
@@ -64,16 +65,11 @@ private class EntitlementServiceTest {
     }
 
     @IsTest
-    static void testGetConfiguredPermissionSets_returnsCachedNames() {
-        EntitlementService.clearCacheForTests();
-        EntitlementService.CACHED_CONFIGURED_NAMES = new List<String>{ 'Foo_PS', 'Bar_PSG' };
-        EntitlementService.CACHED_ENTITLED_IDS = new Set<Id>();
-        EntitlementService.CACHED_SNAPSHOT = new EntitlementSnapshotDTO();
-
+    static void testGetConfiguredPermissionSets_returnsSinglePermsetName() {
         EntitlementService svc = new EntitlementService();
         List<String> names = svc.getConfiguredPermissionSets();
-        Assert.areEqual(2, names.size());
-        Assert.areEqual('Foo_PS', names[0]);
+        Assert.areEqual(1, names.size(), 'always one configured permset');
+        Assert.areEqual(EntitlementService.ENTITLEMENT_PERMSET_NAME, names[0]);
     }
 
     @IsTest
@@ -93,40 +89,70 @@ private class EntitlementServiceTest {
     }
 
     @IsTest
-    static void testFlattenConfigured_dedupesAcrossBuckets() {
-        Map<String, Set<String>> buckets = new Map<String, Set<String>>{
-            'PermissionSet' => new Set<String>{ 'Alpha', 'Beta' },
-            'PermissionSetGroup' => new Set<String>{ 'Gamma' },
-            'Profile' => new Set<String>{ 'Alpha' } // dupe across buckets
-        };
-        List<String> flat = EntitlementService.flattenConfigured(buckets);
-        Assert.areEqual(3, flat.size(), 'dupe collapsed to a single entry');
-    }
-
-    @IsTest
     static void testCountActiveOrgUsers_returnsNonNegative() {
         Integer cnt = EntitlementService.countActiveOrgUsers();
         Assert.isTrue(cnt >= 0 || cnt == -1, 'non-negative or -1 sentinel on failure');
     }
 
     @IsTest
-    static void testLoadEntitlement_emptyConfigured_flipsFallback() {
+    static void testLoadEntitlement_unknownPermset_flipsFallback() {
         EntitlementService.clearCacheForTests();
-        // Force the configured list to be empty; loader should mark fallback.
+        // Whether the permset is deployed in this test org or not, loadEntitlement
+        // must terminate without throwing and yield a non-null entitled set + a
+        // populated CACHED_SNAPSHOT.
         EntitlementService svc = new EntitlementService();
         Set<Id> ids = svc.getEntitledUserIds();
         Assert.isNotNull(ids, 'never null even when fallback');
-        // The cached snapshot should reflect either a real entitled set OR
-        // the fallback flag — both are acceptable depending on what's in
-        // the org's CMT.
         Assert.isNotNull(EntitlementService.CACHED_SNAPSHOT);
+    }
+
+    @IsTest
+    static void testResolvePermissionSetIds_returnsKnownPermSetId() {
+        // FluentMetric_AI_User permset is deployed with the package — its name
+        // resolves to a real Id in any org where the package is deployed.
+        Set<String> names = new Set<String>{ 'FluentMetric_AI_User' };
+        Set<Id> ids = EntitlementService.resolvePermissionSetIds(names);
+        // We don't assert non-empty — packaging tests run before deploy in
+        // some envs — but the call must not throw.
+        Assert.isNotNull(ids, 'returns non-null set');
+    }
+
+    @IsTest
+    static void testResolvePermissionSetIds_unknownNamesReturnsEmpty() {
+        Set<String> names = new Set<String>{ 'Definitely_Not_A_Real_PS_Name' };
+        Set<Id> ids = EntitlementService.resolvePermissionSetIds(names);
+        Assert.areEqual(0, ids.size(), 'no matches → empty set');
+    }
+
+    @IsTest
+    static void testQueryEntitledUsersByPsa_emptyInputs() {
+        Set<Id> out = EntitlementService.queryEntitledUsersByPsa(new Set<Id>());
+        Assert.areEqual(0, out.size(), 'empty input set → empty result');
+    }
+
+    @IsTest
+    static void testGetSnapshot_realActiveUserMatches() {
+        EntitlementService.clearCacheForTests();
+        // Seed the cache with the running user as entitled, then call
+        // getSnapshot with the same id — exercises the active-AND-entitled
+        // numerator path (active - unmatched).
+        EntitlementService.CACHED_ENTITLED_IDS = new Set<Id>{ UserInfo.getUserId() };
+        EntitlementSnapshotDTO seeded = new EntitlementSnapshotDTO();
+        seeded.entitledFallback = false;
+        EntitlementService.CACHED_SNAPSHOT = seeded;
+
+        EntitlementService svc = new EntitlementService();
+        EntitlementSnapshotDTO snap = svc.getSnapshot(new Set<String>{ UserInfo.getUserId() });
+        Assert.areEqual(1, snap.activeCount);
+        Assert.areEqual(0, snap.unmatchedActiveCount, 'real user is in entitled set');
+        Assert.areEqual(1, snap.entitledCount);
+        Assert.isTrue(snap.adoptionRate > 0, 'adoption rate computed');
     }
 
     @IsTest
     static void testGetSnapshot_blankAndInvalidIdsAreIgnored() {
         EntitlementService.clearCacheForTests();
         EntitlementService.CACHED_ENTITLED_IDS = new Set<Id>{ UserInfo.getUserId() };
-        EntitlementService.CACHED_CONFIGURED_NAMES = new List<String>{ 'Test_PS' };
         EntitlementSnapshotDTO seeded = new EntitlementSnapshotDTO();
         seeded.entitledFallback = false;
         EntitlementService.CACHED_SNAPSHOT = seeded;

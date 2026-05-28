@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>FluentMetric AI Entitled User</label>
+    <description>FluentMetric AI adoption-denominator scope. Assign to users expected to use Einstein Generative AI; adoption rate = active GenAI users ÷ assignees. Grants no functional access; runtime AI permissions come from the standard Einstein permsets.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <license>Salesforce</license>
+</PermissionSet>

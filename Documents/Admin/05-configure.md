@@ -6,7 +6,7 @@
 There are three independent configuration surfaces:
 
 1. **Cost engine** (Custom Setting + Custom Metadata)
-2. **Adoption denominator** (Custom Metadata)
+2. **Adoption denominator** (Permission Set assignment)
 3. **Permission Set assignment** (Setup → Permission Sets)
 
 ## 1. Cost engine
@@ -67,36 +67,50 @@ back to the Custom Setting's Default Rate.
 ## 2. Adoption denominator (entitled-user count)
 
 The Adoption tab computes `adoption rate = (active users) / (entitled users)`.
-"Entitled" defaults to three Permission Sets but you can configure any mix
-of Permission Sets, Permission Set Groups, and Profiles.
+"Entitled" is defined by membership of a single permission set —
+`FluentMetric_AI_Entitled_User` — that ships with the package and grants
+no functional access on its own (runtime AI permissions still come from
+Einstein Generative AI User / Prompt Template User / etc.).
 
-1. **Setup → Custom Metadata Types → FluentMetric Entitlement Permission Set → Manage Records**.
-2. Review the three seed rows:
+1. **Setup → Permission Sets → FluentMetric AI Entitled User → Manage Assignments → Add Assignments**.
+2. Select every user expected to use Einstein Generative AI features —
+   typically the same population you assigned `Einstein Generative AI User`
+   to, but the two lists are independent so you can scope adoption
+   measurement narrower (e.g., a pilot cohort) or wider (e.g., everyone
+   you *plan* to onboard).
+3. **Assign**.
 
-   | Source Developer Name | Entitlement Type | Default state |
-   |---|---|---|
-   | `Prompt_Template_User` | PermissionSet | Enabled |
-   | `Einstein_Generative_AI_User` | PermissionSet | Enabled |
-   | `Prompt_Template_Manager` | PermissionSet | Enabled |
+Reload the FluentMetric AI app — the Adoption tab now uses the assignee
+count as the denominator.
 
-3. **Disable rows that don't apply** — e.g., orgs without Einstein GenAI
-   licenses should disable `Einstein_Generative_AI_User`.
-4. **Add rows** for any source that grants AI capability in your org:
-   - `Source Developer Name` — exact API/developer name of the
-     PermissionSet, PermissionSetGroup, or Profile.
-   - `Entitlement Type` — pick `PermissionSet`, `PermissionSetGroup`, or
-     `Profile`.
-   - `Is Enabled` — leave checked.
-5. Save.
+> **`entitledFallback=true` in the funnel tooltip** = `FluentMetric_AI_Entitled_User`
+> has zero assignees in this org (or the underlying PSA query failed) and
+> the engine silently fell back to "all active users". Treat as a config
+> signal, not a bug — assign the permset to scope the denominator.
 
-Reload the FluentMetric AI app — the Adoption tab now computes the
-denominator from the union of users assigned to (or holding the profile
-of) the configured sources.
+### Tableau Next: nightly entitlement sync
 
-> **`entitledFallback=true` in the funnel tooltip** = the engine couldn't
-> resolve any entitled users (CMT empty, all rows disabled, or every query
-> threw) and silently fell back to "all active users". Treat as a config
-> signal, not a bug.
+If you have the Tableau Next edition, the SDM-side adoption rate reads
+`User.FluentMetric_IsEntitled__c`, which is stamped from PSA by the
+`FluentMetricEntitlementSyncSchedulable` Apex job. The installer
+(`make install`) schedules the job nightly at 02:00 org time. Verify it's
+running with:
+
+```bash
+sf data query --query \
+  "SELECT CronExpression, NextFireTime FROM CronTrigger \
+   WHERE CronJobDetail.Name LIKE '%FluentMetric Entitlement Sync%'"
+```
+
+If you change permset assignments mid-day and need the Tableau dashboard
+to refresh immediately, run the sync ad-hoc from Anonymous Apex:
+
+```apex
+FluentMetricEntitlementSyncSchedulable.syncEntitledFlags();
+```
+
+The Lightning side resolves PSA live every transaction and never needs
+a manual refresh.
 
 ## 3. Permission Set assignment patterns
 

@@ -1,13 +1,15 @@
 /**
  * Adoption denominator snapshot returned by EntitlementService.getSnapshot().
  *
- * `entitledCount` is the count of users assigned to any configured Permission
- * Set (or PermissionSetGroup, since PSG membership surfaces directly on
- * PermissionSetAssignment). When the FluentMetric_Entitlement_PermissionSet__mdt
- * configuration yields zero matches — empty CMT, none of the named PSs exist in
- * the org, or the query fails — `entitledFallback` flips to true and
- * `entitledCount` is replaced by `totalActiveOrgUsers` so adoption percentages
- * still resolve to a sensible denominator.
+ * `entitledCount` is the count of users assigned to the
+ * FluentMetric_AI_Entitled_User permission set. When that permset isn't
+ * deployed, has zero assignees, or the PSA query fails, `entitledFallback`
+ * flips to true and `entitledCount` is replaced by `totalActiveOrgUsers` so
+ * adoption percentages still resolve to a sensible denominator.
+ *
+ * `configuredPermissionSets` is a one-element list naming the entitlement
+ * permset; kept as a list so the agent action's existing label join continues
+ * to work without per-call type changes.
  */
 public with sharing class EntitlementSnapshotDTO {
     @AuraEnabled

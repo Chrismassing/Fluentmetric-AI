@@ -65,6 +65,15 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
     @TestVisible
     private static Boolean availabilityCache;
 
+    /**
+     * Test-only switch — when true, every Wallet SOQL call throws so that
+     * the catch branches can be driven deterministically in orgs (like
+     * cvk-dev) where the DLO exists and queries succeed. Never set in
+     * non-test code.
+     */
+    @TestVisible
+    private static Boolean forceFailForTests = false;
+
     // ───────────────────────── Public API ─────────────────────────
 
     public Boolean isWalletAvailable() {
@@ -72,6 +81,9 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
             return availabilityCache;
         }
         try {
+            if (forceFailForTests) {
+                throw new QueryException('forced for tests');
+            }
             // SELECT COUNT() is rejected by this DLO; SELECT Id LIMIT 1 is the
             // cheapest way to verify the object resolves and is queryable.
             String soql = 'SELECT Id FROM ' + OBJ_TENANT_USAGE + ' LIMIT 1';
@@ -90,6 +102,9 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
             return null;
         }
         try {
+            if (forceFailForTests) {
+                throw new QueryException('forced for tests');
+            }
             String soql =
                 'SELECT SUM(' +
                 F_UNITS_CONSUMED +
@@ -125,6 +140,9 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
             return new List<WalletAggregateDTO>();
         }
         try {
+            if (forceFailForTests) {
+                throw new QueryException('forced for tests');
+            }
             String soql =
                 'SELECT ' +
                 groupField +
@@ -156,6 +174,9 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
             return new List<WalletAggregateDTO>();
         }
         try {
+            if (forceFailForTests) {
+                throw new QueryException('forced for tests');
+            }
             String soql =
                 'SELECT ' +
                 F_RESOURCE_ID_OR_NAME +
@@ -204,6 +225,9 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
             return new List<WalletAggregateDTO>();
         }
         try {
+            if (forceFailForTests) {
+                throw new QueryException('forced for tests');
+            }
             String soql =
                 'SELECT ' +
                 F_USER_ID +
@@ -259,6 +283,9 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
             return new List<WalletAggregateDTO>();
         }
         try {
+            if (forceFailForTests) {
+                throw new QueryException('forced for tests');
+            }
             String soql =
                 'SELECT ' +
                 F_RESOURCE_TAGS +
@@ -291,6 +318,7 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
      * (key, value) pair. Tag rows that fail to parse are silently skipped —
      * we never want a malformed JSON row to break the whole panel.
      */
+    @TestVisible
     private List<WalletAggregateDTO> aggregateTagRows(List<SObject> rows) {
         Map<String, WalletAggregateDTO> bucket = new Map<String, WalletAggregateDTO>();
         if (rows == null) {
@@ -330,6 +358,7 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
 
     // ───────────────────────── Internals ─────────────────────────
 
+    @TestVisible
     private String resolveGroupField(String groupBy) {
         if (String.isBlank(groupBy)) {
             return null;
@@ -352,6 +381,7 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
         return null;
     }
 
+    @TestVisible
     private List<WalletAggregateDTO> mapAggregates(List<AggregateResult> rows, String groupBy) {
         List<WalletAggregateDTO> out = new List<WalletAggregateDTO>();
         if (rows == null) {
@@ -377,6 +407,7 @@ public with sharing class AiWalletDAO implements IAiWalletDAO {
         return out;
     }
 
+    @TestVisible
     private static Decimal toDecimal(Object raw) {
         if (raw == null) {
             return 0;
