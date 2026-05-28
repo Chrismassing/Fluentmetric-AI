@@ -1,41 +1,98 @@
 <template>
-    <div class="slds-grid slds-grid_vertical-align-end slds-gutters_x-small slds-wrap" role="group" aria-label="Date range filter">
-        <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12 slds-large-size_3-of-12">
-            <lightning-combobox
-                name="preset"
-                label="Date range"
-                value={preset}
-                options={presetOptions}
-                onchange={handlePresetChange}
-                variant="label-stacked">
-            </lightning-combobox>
-        </div>
-        <template lwc:if={isCustom}>
-            <div class="slds-col slds-size_1-of-2 slds-medium-size_3-of-12 slds-large-size_2-of-12">
-                <lightning-input
-                    type="date"
-                    name="customStart"
-                    label="From"
-                    value={customStart}
-                    onchange={handleCustomStartChange}
-                    variant="label-stacked">
-                </lightning-input>
-            </div>
-            <div class="slds-col slds-size_1-of-2 slds-medium-size_3-of-12 slds-large-size_2-of-12">
-                <lightning-input
-                    type="date"
-                    name="customEnd"
-                    label="To"
-                    value={customEnd}
-                    onchange={handleCustomEndChange}
-                    variant="label-stacked">
-                </lightning-input>
-            </div>
+    <!--
+        Compact pill design.
+          • Default state — a single button-pill that shows preset + resolved
+            dates, e.g. "Last 30 days · May 1 – May 31". Click to open the
+            popover.
+          • Popover — combobox + (when Custom) two date inputs, identical
+            controls to the pre-refactor flat layout. Closes on outside click,
+            Escape, or Apply.
+        LMS publishing logic is unchanged: every commit goes through
+        publishRange() on the AiInsightsDateRange channel.
+    -->
+    <div class="fm-date-pill-root" role="group" aria-label="Date range filter">
+        <button
+            type="button"
+            class="fm-date-pill"
+            aria-haspopup="dialog"
+            aria-expanded={popoverOpen}
+            onclick={handleTogglePopover}>
+            <lightning-icon
+                icon-name="utility:date_input"
+                size="x-small"
+                alternative-text=""
+                class="fm-date-pill__icon">
+            </lightning-icon>
+            <span class="fm-date-pill__label">{pillLabel}</span>
+            <lightning-icon
+                icon-name={chevronIcon}
+                size="xx-small"
+                alternative-text={chevronAltText}
+                class="fm-date-pill__chevron">
+            </lightning-icon>
+        </button>
+
+        <template lwc:if={popoverOpen}>
+            <section
+                class="slds-popover slds-popover_panel slds-nubbin_top-right fm-date-popover"
+                role="dialog"
+                aria-label="Date range options">
+                <header class="slds-popover__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                    <h3 class="slds-text-heading_small">Date range</h3>
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        variant="bare"
+                        alternative-text="Close date range"
+                        onclick={handleClosePopover}>
+                    </lightning-button-icon>
+                </header>
+                <div class="slds-popover__body">
+                    <lightning-combobox
+                        name="preset"
+                        label="Preset"
+                        value={preset}
+                        options={presetOptions}
+                        onchange={handlePresetChange}
+                        variant="label-stacked">
+                    </lightning-combobox>
+                    <template lwc:if={isCustom}>
+                        <div class="slds-grid slds-gutters_x-small slds-m-top_x-small">
+                            <div class="slds-col">
+                                <lightning-input
+                                    type="date"
+                                    name="customStart"
+                                    label="From"
+                                    value={customStart}
+                                    onchange={handleCustomStartChange}
+                                    variant="label-stacked">
+                                </lightning-input>
+                            </div>
+                            <div class="slds-col">
+                                <lightning-input
+                                    type="date"
+                                    name="customEnd"
+                                    label="To"
+                                    value={customEnd}
+                                    onchange={handleCustomEndChange}
+                                    variant="label-stacked">
+                                </lightning-input>
+                            </div>
+                        </div>
+                    </template>
+                    <template lwc:if={errorMessage}>
+                        <div class="slds-text-color_error slds-text-body_small slds-m-top_x-small" role="alert">
+                            {errorMessage}
+                        </div>
+                    </template>
+                </div>
+                <footer class="slds-popover__footer slds-text-align_right">
+                    <lightning-button
+                        variant="brand"
+                        label="Done"
+                        onclick={handleClosePopover}>
+                    </lightning-button>
+                </footer>
+            </section>
         </template>
     </div>
-    <template lwc:if={errorMessage}>
-        <div class="slds-text-color_error slds-text-body_small slds-m-top_x-small" role="alert">
-            {errorMessage}
-        </div>
-    </template>
 </template>

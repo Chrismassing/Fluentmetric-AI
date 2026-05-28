@@ -1,0 +1,8 @@
+/*
+ * Cost tab wrapper has no styling of its own — the embedded
+ * aiInsightsCostAnalysis component owns the visual chrome. This file
+ * exists so the bundle is well-formed.
+ */
+:host {
+    display: block;
+}

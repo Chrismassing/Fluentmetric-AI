@@ -1,0 +1,57 @@
+<template>
+    <div class="slds-p-around_small">
+        <template lwc:if={isLoading}>
+            <c-ai-insights-empty-state
+                variant="skeleton"
+                skeleton-rows="6"
+                title="Loading cohorts">
+            </c-ai-insights-empty-state>
+        </template>
+
+        <template lwc:if={showError}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                <span class="slds-m-left_x-small">{errorMessage}</span>
+            </div>
+        </template>
+
+        <template lwc:if={showEmptyState}>
+            <c-ai-insights-empty-state
+                title="No cohorts in this range"
+                message="No users were observed in the selected date range, so there are no cohort waves to chart."
+                icon-name="utility:groups">
+            </c-ai-insights-empty-state>
+        </template>
+
+        <template lwc:if={showHeatmap}>
+            <template lwc:if={isTruncated}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_warning slds-m-bottom_small" role="status" aria-live="polite">
+                    <lightning-icon icon-name="utility:info" size="x-small" alternative-text="Note"></lightning-icon>
+                    <span class="slds-m-left_x-small">{truncationMessage}</span>
+                </div>
+            </template>
+
+            <div class="fm-heatmap" role="table" aria-label="Cohort retention heatmap">
+                <div class="fm-heatmap__row fm-heatmap__row_header" role="row">
+                    <span class="fm-heatmap__corner" role="columnheader">Cohort</span>
+                    <span class="fm-heatmap__corner fm-heatmap__corner_size" role="columnheader">Size</span>
+                    <template for:each={ageHeaders} for:item="hdr">
+                        <span key={hdr.key} class="fm-heatmap__hdr" role="columnheader">{hdr.label}</span>
+                    </template>
+                </div>
+
+                <template for:each={cohortRows} for:item="row">
+                    <div key={row.key} class="fm-heatmap__row" role="row">
+                        <span class="fm-heatmap__label" role="rowheader">{row.label}</span>
+                        <span class="fm-heatmap__size">{row.cohortSizeDisplay}</span>
+                        <template for:each={row.cells} for:item="cell">
+                            <span key={cell.key} class="fm-heatmap__cell" style={cell.style} role="cell" aria-label={cell.display}>
+                                {cell.display}
+                            </span>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

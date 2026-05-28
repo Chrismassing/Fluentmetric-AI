@@ -1,0 +1,11 @@
+/*
+ * Feature adoption table inherits its layout from lightning-datatable + the
+ * shared SLDS notification styles, so this stylesheet only carries spacing
+ * polish that the datatable does not handle. Kept thin on purpose so dark
+ * mode and SLDS 2 token updates flow through without overrides.
+ */
+.fm-datatable {
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    border-radius: 0.25rem;
+    overflow: hidden;
+}

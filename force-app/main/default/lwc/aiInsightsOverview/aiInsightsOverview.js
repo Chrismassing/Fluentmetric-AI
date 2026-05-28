@@ -4,6 +4,7 @@ import AI_INSIGHTS_DATE_RANGE from '@salesforce/messageChannel/AiInsightsDateRan
 import getOverview from '@salesforce/apex/AiInsightsController.getOverview';
 import getOverviewTrends from '@salesforce/apex/AiInsightsController.getOverviewTrends';
 import getUsageByUser from '@salesforce/apex/AiInsightsController.getUsageByUser';
+import getPowerUserSegments from '@salesforce/apex/AiInsightsController.getPowerUserSegments';
 import { abbreviateNumber, formatPercent } from './numberFormat';
 import { TOOLTIPS } from 'c/aiInsightsTooltips';
 import FM_Section_Highlights from '@salesforce/label/c.FM_Section_Highlights';
@@ -11,6 +12,11 @@ import FM_Section_Key_Metrics from '@salesforce/label/c.FM_Section_Key_Metrics';
 import FM_Empty_Overview_Title from '@salesforce/label/c.FM_Empty_Overview_Title';
 import FM_Empty_Overview_Message from '@salesforce/label/c.FM_Empty_Overview_Message';
 import FM_Action_Expand_90_Days from '@salesforce/label/c.FM_Action_Expand_90_Days';
+import FM_Adoption_Pareto_Chip from '@salesforce/label/c.FM_Adoption_Pareto_Chip';
+import FM_Adoption_Pareto_Suffix from '@salesforce/label/c.FM_Adoption_Pareto_Suffix';
+import FM_Adoption_Entitled_Label from '@salesforce/label/c.FM_Adoption_Entitled_Label';
+import FM_Adoption_Fallback_Label from '@salesforce/label/c.FM_Adoption_Fallback_Label';
+import FM_Adoption_Fallback_Tip from '@salesforce/label/c.FM_Adoption_Fallback_Tip';
 
 /**
  * Token-first KPI strip. Imperatively calls AiInsightsController.getOverview
@@ -51,6 +57,11 @@ export default class AiInsightsOverview extends LightningElement {
     // the KPI numbers. Null until the first trend load succeeds.
     trends;
 
+    // Pareto power-user segmentation. Loaded best-effort alongside the
+    // overview; null until the first load completes. The Pareto chip in
+    // the Adoption strip surfaces top10PercentVolumeShare.
+    paretoSegments;
+
     // Exposed to the template so every KPI label renders its own help text.
     tooltips = TOOLTIPS.overview;
 
@@ -59,7 +70,12 @@ export default class AiInsightsOverview extends LightningElement {
         sectionKeyMetrics: FM_Section_Key_Metrics,
         emptyTitle: FM_Empty_Overview_Title,
         emptyMessage: FM_Empty_Overview_Message,
-        expandRange: FM_Action_Expand_90_Days
+        expandRange: FM_Action_Expand_90_Days,
+        paretoPrefix: FM_Adoption_Pareto_Chip,
+        paretoSuffix: FM_Adoption_Pareto_Suffix,
+        entitledLabel: FM_Adoption_Entitled_Label,
+        fallbackLabel: FM_Adoption_Fallback_Label,
+        fallbackTip: FM_Adoption_Fallback_Tip
     };
 
     connectedCallback() {
@@ -113,20 +129,23 @@ export default class AiInsightsOverview extends LightningElement {
             // sparklines and delta badges; users powers the Top contributors
             // leaderboard. Side-channel failures (trends, users) never hide
             // the headline KPIs.
-            const [result, trendsResult, usersResult] = await Promise.all([
+            const [result, trendsResult, usersResult, paretoResult] = await Promise.all([
                 getOverview({ startDate: this.startDate, endDate: this.endDate }),
                 getOverviewTrends({ startDate: this.startDate, endDate: this.endDate }).catch(() => null),
-                getUsageByUser({ startDate: this.startDate, endDate: this.endDate }).catch(() => [])
+                getUsageByUser({ startDate: this.startDate, endDate: this.endDate }).catch(() => []),
+                getPowerUserSegments({ startDate: this.startDate, endDate: this.endDate }).catch(() => null)
             ]);
             this.overview = result;
             this.trends = trendsResult;
             this.topUsers = Array.isArray(usersResult) ? usersResult : [];
+            this.paretoSegments = paretoResult;
             this.hasLoadedOnce = true;
         } catch (err) {
             this.errorMessage = this.extractError(err);
             this.overview = undefined;
             this.trends = undefined;
             this.topUsers = [];
+            this.paretoSegments = undefined;
         } finally {
             this.isLoading = false;
         }
@@ -438,6 +457,69 @@ export default class AiInsightsOverview extends LightningElement {
 
     get safetyFlagClass() {
         return `fm-card fm-card_${this.safetyFlagTheme}`;
+    }
+
+    // --- Adoption strip (Phase 4.1) ----------------------------------------
+
+    get adoptionRatePct() {
+        const v = this.overview && this.overview.adoptionRate;
+        if (v === null || v === undefined) return null;
+        const n = Number(v);
+        if (Number.isNaN(n)) return null;
+        // Service emits a 0..1 ratio; render as a 0..100 percent.
+        return Math.abs(n) <= 1 ? n * 100 : n;
+    }
+
+    get adoptionRateDisplay() {
+        const pct = this.adoptionRatePct;
+        if (pct === null) return '—';
+        return `${pct.toFixed(1)}%`;
+    }
+
+    get hasAdoptionData() {
+        return !!(this.overview && (this.overview.entitledUserCount > 0 || this.overview.totalActiveOrgUsers > 0));
+    }
+
+    get adoptionDenominatorLabel() {
+        if (!this.overview) return '';
+        return this.overview.entitledFallback ? this.labels.fallbackLabel : this.labels.entitledLabel;
+    }
+
+    get adoptionDenominatorCount() {
+        if (!this.overview) return 0;
+        return this.overview.entitledFallback
+            ? (this.overview.totalActiveOrgUsers || 0)
+            : (this.overview.entitledUserCount || 0);
+    }
+
+    get adoptionFallbackTip() {
+        return this.overview && this.overview.entitledFallback ? this.labels.fallbackTip : '';
+    }
+
+    get showAdoptionFallbackTip() {
+        return !!(this.overview && this.overview.entitledFallback);
+    }
+
+    // --- Pareto chip (Phase 4.1) -------------------------------------------
+
+    get paretoSharePct() {
+        const v = this.paretoSegments && this.paretoSegments.top10PercentVolumeShare;
+        if (v === null || v === undefined) return null;
+        const n = Number(v);
+        if (Number.isNaN(n)) return null;
+        return Math.abs(n) <= 1 ? n * 100 : n;
+    }
+
+    get paretoChipDisplay() {
+        const pct = this.paretoSharePct;
+        if (pct === null) return '';
+        return `${this.labels.paretoPrefix} ${pct.toFixed(1)}% ${this.labels.paretoSuffix}`;
+    }
+
+    get hasParetoChip() {
+        const pct = this.paretoSharePct;
+        const users = this.paretoSegments && this.paretoSegments.top10PercentUserCount;
+        return pct !== null && (users || 0) > 0;
     }
 
     get dateRangeLabel() {

@@ -1,0 +1,106 @@
+<template>
+    <lightning-card title="Adoption" icon-name="standard:user">
+        <template lwc:if={presetLabel}>
+            <span slot="actions" class="slds-text-body_small slds-text-color_weak">{presetLabel}</span>
+        </template>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <p class="slds-text-body_regular slds-text-color_weak slds-m-bottom_medium">
+                {labels.tabSubhead}
+                <lightning-helptext content={tooltips.tabHeading} class="slds-m-left_xx-small"></lightning-helptext>
+            </p>
+
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <!-- ─────────── Adoption rate chips ─────────── -->
+            <template lwc:if={hasAdoptionData}>
+                <section aria-labelledby="fm-adoption-chips-heading" class="slds-m-bottom_large">
+                    <h3 id="fm-adoption-chips-heading" class="slds-text-heading_small slds-m-bottom_small">
+                        {labels.sectionRate}
+                        <lightning-helptext content={tooltips.entitledDenominator} class="slds-m-left_xx-small"></lightning-helptext>
+                    </h3>
+                    <div class="fm-adoption-strip" role="list" aria-label="Adoption indicators">
+                        <div class="fm-adoption-chip" role="listitem">
+                            <span class="fm-adoption-chip__primary">{adoptionRateDisplay}</span>
+                            <span class="fm-adoption-chip__secondary">
+                                <lightning-formatted-number value={adoptionDenominatorCount} format-style="decimal"></lightning-formatted-number>
+                                <span class="slds-m-left_xx-small">{adoptionDenominatorLabel}</span>
+                            </span>
+                        </div>
+                        <template lwc:if={hasParetoChip}>
+                            <div class="fm-adoption-chip fm-adoption-chip_pareto" role="listitem">
+                                <lightning-icon icon-name="utility:chart" size="xx-small" alternative-text=""></lightning-icon>
+                                <span class="slds-m-left_xx-small">{paretoChipDisplay}</span>
+                                <lightning-helptext content={tooltips.paretoChip} class="slds-m-left_xx-small"></lightning-helptext>
+                            </div>
+                        </template>
+                        <template lwc:if={showAdoptionFallbackTip}>
+                            <div class="fm-adoption-tip" role="listitem">
+                                <lightning-icon icon-name="utility:info_alt" size="xx-small" alternative-text=""></lightning-icon>
+                                <span class="slds-m-left_xx-small">{adoptionFallbackTip}</span>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            </template>
+
+            <!-- ─────────── Adoption funnel ─────────── -->
+            <section aria-label="Adoption funnel" class="slds-m-bottom_large">
+                <c-ai-insights-adoption-funnel></c-ai-insights-adoption-funnel>
+            </section>
+
+            <!-- ─────────── Top Contributors leaderboard ─────────── -->
+            <template lwc:if={hasTopUsersRows}>
+                <section aria-labelledby="fm-top-contributors-heading" class="slds-m-bottom_large">
+                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                        <h3 id="fm-top-contributors-heading" class="slds-text-heading_small">
+                            {labels.sectionTopContributors}
+                            <lightning-helptext content={tooltips.contributorRank} class="slds-m-left_xx-small"></lightning-helptext>
+                        </h3>
+                        <div class="slds-button-group" role="group" aria-label="Sort top contributors">
+                            <button type="button"
+                                data-sort="tokens"
+                                class={topUsersTokensClass}
+                                aria-pressed={topUsersByTokensActive}
+                                onclick={handleTopUsersSortToggle}>By tokens</button>
+                            <button type="button"
+                                data-sort="requests"
+                                class={topUsersRequestsClass}
+                                aria-pressed={topUsersByRequestsActive}
+                                onclick={handleTopUsersSortToggle}>By requests</button>
+                        </div>
+                    </div>
+                    <ul class="fm-top-contributors" role="list">
+                        <template for:each={topUsersRows} for:item="row">
+                            <li key={row.userId} class="fm-top-contributors__row">
+                                <span class="fm-top-contributors__name" title={row.userName}>{row.userName}</span>
+                                <span class="fm-top-contributors__bar" aria-hidden="true">
+                                    <span class="fm-top-contributors__bar-fill" style={row.barStyle}></span>
+                                </span>
+                                <span class="fm-top-contributors__primary">{row.primaryDisplay}</span>
+                                <span class="fm-top-contributors__secondary slds-text-color_weak">{row.secondaryDisplay}</span>
+                            </li>
+                        </template>
+                    </ul>
+                </section>
+            </template>
+
+            <!-- ─────────── Per-user adoption (search + sortable table + cohort heatmap) ─────────── -->
+            <section aria-labelledby="fm-user-adoption-heading" class="slds-m-bottom_large">
+                <h3 id="fm-user-adoption-heading" class="slds-text-heading_small slds-m-bottom_small">{labels.sectionUserAdoption}</h3>
+                <c-ai-insights-user-adoption></c-ai-insights-user-adoption>
+            </section>
+
+            <!-- ─────────── Feature adoption (breadth view) ─────────── -->
+            <section aria-labelledby="fm-feature-adoption-heading">
+                <h3 id="fm-feature-adoption-heading" class="slds-text-heading_small slds-m-bottom_small">{labels.sectionFeatureAdoption}</h3>
+                <c-ai-insights-feature-adoption></c-ai-insights-feature-adoption>
+            </section>
+        </div>
+    </lightning-card>
+</template>

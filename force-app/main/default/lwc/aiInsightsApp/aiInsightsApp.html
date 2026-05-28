@@ -1,34 +1,54 @@
 <template>
-    <div class="slds-p-around_small" onopeninexplorer={handleOpenInExplorer}>
-        <!-- ──────────── Header + Date Filter (outside the tabset) ──────────── -->
-        <header class="slds-m-bottom_small">
-            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-end slds-wrap">
-                <div class="slds-col">
-                    <h1 class="slds-text-heading_large">{labels.appTitle}</h1>
-                    <p class="slds-text-body_regular slds-text-color_weak">
-                        {labels.appSubtitle}
-                    </p>
-                </div>
-                <div class="slds-col fm-app-date-filter">
-                    <c-ai-insights-date-filter></c-ai-insights-date-filter>
-                </div>
+    <div class="fm-app-shell" onopeninexplorer={handleOpenInExplorer}>
+        <!--
+            Compact sticky toolbar.
+              • Single row: app icon + title on the left, date-range pill on
+                the right showing preset + resolved dates.
+              • Sits above the tabset at z-index 4 so it stays in view as
+                users scroll long pages.
+              • The old two-row header + "FluentMetric AI / See who uses
+                Einstein…" copy moved to a helptext on the title to reclaim
+                vertical space without losing the framing.
+        -->
+        <header class="fm-app-toolbar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_medium slds-p-vertical_x-small">
+            <div class="slds-grid slds-grid_vertical-align-center fm-app-toolbar__title">
+                <lightning-icon
+                    icon-name="custom:custom17"
+                    size="small"
+                    alternative-text="FluentMetric AI"
+                    class="slds-m-right_small">
+                </lightning-icon>
+                <h1 class="slds-text-heading_medium">{labels.appTitle}</h1>
+                <lightning-helptext
+                    content={labels.appSubtitle}
+                    class="slds-m-left_x-small">
+                </lightning-helptext>
             </div>
-            <!-- Active filter pills — globally visible so users see what is
-                 slicing the view from any tab, not just Explorer. The pills
-                 component renders nothing when no filter is active, so the
-                 header stays compact. -->
-            <div class="slds-m-top_x-small">
-                <c-ai-insights-filter-pills></c-ai-insights-filter-pills>
+            <div class="fm-app-toolbar__date">
+                <c-ai-insights-date-filter></c-ai-insights-date-filter>
             </div>
         </header>
 
-        <!-- Main tabset — full width. The filter rail still lives inside the
-             Explorer tab; only the pills are hoisted globally. -->
-        <div class="slds-card fm-app-tabs">
+        <!-- Active filter pills — globally visible so users see what is
+             slicing the view from any tab, not just Explorer. The pills
+             component renders nothing when no filter is active so the
+             toolbar collapses to a single row when there are no filters. -->
+        <div class="slds-p-horizontal_medium slds-p-bottom_x-small">
+            <c-ai-insights-filter-pills></c-ai-insights-filter-pills>
+        </div>
+
+        <!--
+            Five-tab navigation: Overview · Adoption · Explorer · Safety · Cost.
+            All tabs stay mounted (no lazy loading) so each child's LMS
+            subscriber connects during its own connectedCallback — this
+            matters because the date-filter publish can race an unmounted
+            child and leave it with null dates.
+        -->
+        <div class="slds-card fm-app-tabs slds-m-horizontal_medium slds-m-bottom_medium">
             <lightning-tabset variant="standard" class="fm-tabset" active-tab-value={activeTab}>
                 <lightning-tab
                     value="overview"
-                    label="Overview"
+                    label={labels.tabOverview}
                     icon-name="utility:dashboard"
                     title={tooltips.tabOverview}>
                     <div class="slds-p-around_medium">
@@ -36,36 +56,20 @@
                     </div>
                 </lightning-tab>
 
-                <!-- Activity = Users + Prompts + Tokens consolidated under a
-                     group-by toggle. Cost analysis appears as a collapsible
-                     panel above the table, gated by Enable_Cost_Metrics__c. -->
                 <lightning-tab
-                    value="activity"
-                    label="Activity"
-                    icon-name="utility:activity"
-                    title={tooltips.tabActivity}>
+                    value="adoption"
+                    label={labels.tabAdoption}
+                    icon-name="utility:trending"
+                    title={tooltips.tabAdoption}>
                     <div class="slds-p-around_medium">
-                        <c-ai-insights-cost-analysis></c-ai-insights-cost-analysis>
-                        <div class="slds-m-top_small">
-                            <c-ai-insights-activity></c-ai-insights-activity>
-                        </div>
+                        <c-ai-insights-adoption></c-ai-insights-adoption>
                     </div>
                 </lightning-tab>
 
-                <lightning-tab
-                    value="safety"
-                    label="Safety"
-                    icon-name="utility:shield"
-                    title={tooltips.tabSafety}>
-                    <div class="slds-p-around_medium">
-                        <c-ai-insights-safety></c-ai-insights-safety>
-                    </div>
-                </lightning-tab>
-
-                <!-- Explorer: rail + pills in a two-column layout inside the tab. -->
+                <!-- Explorer: rail + pivot in a two-column layout inside the tab. -->
                 <lightning-tab
                     value="explorer"
-                    label="Explorer"
+                    label={labels.tabExplorer}
                     icon-name="utility:search"
                     title={tooltips.tabExplorer}>
                     <div class="slds-grid slds-gutters_small slds-wrap slds-p-top_small">
@@ -79,6 +83,26 @@
                                 </c-ai-insights-filter-rail>
                             </div>
                         </aside>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab
+                    value="safety"
+                    label={labels.tabSafety}
+                    icon-name="utility:shield"
+                    title={tooltips.tabSafety}>
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-safety></c-ai-insights-safety>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab
+                    value="cost"
+                    label={labels.tabCost}
+                    icon-name="utility:money"
+                    title={tooltips.tabCost}>
+                    <div class="slds-p-around_medium">
+                        <c-ai-insights-cost></c-ai-insights-cost>
                     </div>
                 </lightning-tab>
             </lightning-tabset>

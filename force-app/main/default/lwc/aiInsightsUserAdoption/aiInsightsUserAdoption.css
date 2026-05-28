@@ -19,3 +19,15 @@
 .fm-text_warning {
     color: var(--slds-g-color-warning-base-30, #8c4b02);
 }
+
+/* ───────── Power-user tier badges (Phase 4.2) ─────────
+   Color is always paired with an icon (trophy / trending) in the cell so the
+   tier is recognizable without color alone. */
+.fm-tier_top1 {
+    color: var(--slds-g-color-warning-base-50, #b16302);
+    font-weight: 600;
+}
+.fm-tier_top10 {
+    color: var(--slds-g-color-brand-base-50, #0176d3);
+    font-weight: 600;
+}

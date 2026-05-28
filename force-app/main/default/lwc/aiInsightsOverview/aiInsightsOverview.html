@@ -138,6 +138,7 @@
                                         <lightning-icon icon-name={deltaRequests.icon} size="xx-small" alternative-text=""></lightning-icon>
                                         <span class="slds-m-left_xx-small">{deltaRequests.display}</span>
                                         <span class="slds-m-left_xx-small slds-text-color_weak">{deltaRequests.windowText}</span>
+                                        <lightning-helptext content={tooltips.wowBadge} class="slds-m-left_xx-small"></lightning-helptext>
                                     </p>
                                 </template>
                             </template>
@@ -308,38 +309,12 @@
                 </div>
                 </section>
 
-                <!-- ─────────── Top Contributors leaderboard ─────────── -->
-                <template lwc:if={hasTopUsersRows}>
-                    <section aria-labelledby="fm-top-contributors-heading" class="slds-m-top_large">
-                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
-                            <h3 id="fm-top-contributors-heading" class="slds-text-heading_small">Top contributors</h3>
-                            <div class="slds-button-group" role="group" aria-label="Sort top contributors">
-                                <button type="button"
-                                    data-sort="tokens"
-                                    class={topUsersTokensClass}
-                                    aria-pressed={topUsersByTokensActive}
-                                    onclick={handleTopUsersSortToggle}>By tokens</button>
-                                <button type="button"
-                                    data-sort="requests"
-                                    class={topUsersRequestsClass}
-                                    aria-pressed={topUsersByRequestsActive}
-                                    onclick={handleTopUsersSortToggle}>By requests</button>
-                            </div>
-                        </div>
-                        <ul class="fm-top-contributors" role="list">
-                            <template for:each={topUsersRows} for:item="row">
-                                <li key={row.userId} class="fm-top-contributors__row">
-                                    <span class="fm-top-contributors__name" title={row.userName}>{row.userName}</span>
-                                    <span class="fm-top-contributors__bar" aria-hidden="true">
-                                        <span class="fm-top-contributors__bar-fill" style={row.barStyle}></span>
-                                    </span>
-                                    <span class="fm-top-contributors__primary">{row.primaryDisplay}</span>
-                                    <span class="fm-top-contributors__secondary slds-text-color_weak">{row.secondaryDisplay}</span>
-                                </li>
-                            </template>
-                        </ul>
-                    </section>
-                </template>
+                <!--
+                    Adoption funnel, top contributors leaderboard, and the
+                    adoption rate / Pareto chips moved to the dedicated
+                    Adoption tab so Overview stays glanceable. See
+                    c-ai-insights-adoption.
+                -->
             </template>
         </div>
     </lightning-card>

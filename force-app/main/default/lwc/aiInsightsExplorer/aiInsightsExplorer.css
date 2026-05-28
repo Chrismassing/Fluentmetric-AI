@@ -1,6 +1,6 @@
 /*
- * Explorer styles. Chart rendering mirrors aiInsightsTokenConsumption so
- * Phase 3 feels visually coherent. All colors reference SLDS design tokens.
+ * Explorer styles. CSS-only horizontal bar chart + preset chips. All
+ * colors reference SLDS design tokens.
  */
 
 .fm-spinner-wrap {
@@ -16,6 +16,50 @@
     background-color: var(--slds-g-color-surface-container-1, #fafafa);
     border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
     border-radius: var(--slds-g-radius-border-2, 0.25rem);
+}
+
+/* --- Preset chips ------------------------------------------------------- */
+
+.fm-preset-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.fm-preset-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    background-color: var(--slds-g-color-surface-container-1, #fff);
+    color: var(--slds-g-color-neutral-base-10, #181818);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.fm-preset-chip:hover,
+.fm-preset-chip:focus {
+    background-color: var(--slds-g-color-surface-container-2, #f3f3f3);
+    border-color: var(--slds-g-color-brand-base-50, #0176d3);
+    outline: none;
+}
+
+/* --- Detail table collapse toggle -------------------------------------- */
+
+.fm-detail-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--slds-g-color-brand-base-50, #0176d3);
+}
+
+.fm-detail-toggle:hover,
+.fm-detail-toggle:focus {
+    color: var(--slds-g-color-brand-base-40, #014486);
+    outline: none;
 }
 
 /* --- Bar chart (single-segment, brand color) ---------------------------- */

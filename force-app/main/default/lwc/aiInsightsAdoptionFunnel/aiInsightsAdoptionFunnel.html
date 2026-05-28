@@ -1,0 +1,81 @@
+<template>
+    <article class="slds-card">
+        <header class="slds-card__header slds-grid slds-grid_vertical-align-center">
+            <div class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="utility:chart" size="small" alternative-text="Adoption funnel"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">
+                        <span class="slds-text-heading_small">Adoption funnel</span>
+                    </h2>
+                    <p class="slds-text-body_small slds-text-color_weak">
+                        Active org users &rarr; Entitled &rarr; Active in window
+                    </p>
+                </div>
+                <template lwc:if={showFunnel}>
+                    <div class="slds-media__figure slds-media__figure_reverse">
+                        <span class="slds-badge slds-badge_lightest" title={tooltips.entitledDenominator}>
+                            Adoption&nbsp;{adoptionRateDisplay}
+                        </span>
+                    </div>
+                </template>
+            </div>
+        </header>
+
+        <div class="slds-card__body slds-card__body_inner">
+            <template lwc:if={showError}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={isLoading}>
+                <c-ai-insights-empty-state
+                    variant="skeleton"
+                    skeleton-rows="3"
+                    title="Loading adoption funnel">
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showEmptyState}>
+                <c-ai-insights-empty-state
+                    title="No adoption signal in this range"
+                    message="No active users were observed in the selected date range."
+                    icon-name="standard:user">
+                </c-ai-insights-empty-state>
+            </template>
+
+            <template lwc:if={showFunnel}>
+                <ul class="fm-funnel" role="list">
+                    <template for:each={stages} for:item="stage">
+                        <li key={stage.key} class="fm-funnel__row">
+                            <div class="fm-funnel__label">
+                                <lightning-icon icon-name={stage.icon} size="x-small" alternative-text={stage.label}></lightning-icon>
+                                <span class="slds-m-left_x-small">{stage.label}</span>
+                            </div>
+                            <div class="fm-funnel__track">
+                                <div class={stage.barClass} style={stage.barStyle}></div>
+                            </div>
+                            <div class="fm-funnel__count">{stage.countDisplay}</div>
+                        </li>
+                    </template>
+                </ul>
+
+                <template lwc:if={isFallback}>
+                    <div class="fm-funnel__tip slds-m-top_small slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_warning" role="status" aria-live="polite">
+                        <lightning-icon icon-name="utility:info_alt" size="x-small" alternative-text="Note"></lightning-icon>
+                        <span class="slds-m-left_x-small">{fallbackTip}</span>
+                    </div>
+                </template>
+
+                <template lwc:if={hasConfiguredList}>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
+                        Entitled denominator: {configuredList}
+                    </p>
+                </template>
+            </template>
+        </div>
+    </article>
+</template>

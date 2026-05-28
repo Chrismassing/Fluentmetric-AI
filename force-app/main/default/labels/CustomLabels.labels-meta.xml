@@ -17,6 +17,158 @@
         <shortDescription>FM App Subtitle</shortDescription>
         <value>See who uses Einstein, how much it costs, and when outputs get flagged.</value>
     </labels>
+    <labels>
+        <fullName>FM_App_Tab_Overview</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>App tab - Overview</shortDescription>
+        <value>Overview</value>
+    </labels>
+    <labels>
+        <fullName>FM_App_Tab_Adoption</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>App tab - Adoption</shortDescription>
+        <value>Adoption</value>
+    </labels>
+    <labels>
+        <fullName>FM_App_Tab_Explorer</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>App tab - Explorer</shortDescription>
+        <value>Explorer</value>
+    </labels>
+    <labels>
+        <fullName>FM_App_Tab_Safety</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>App tab - Safety</shortDescription>
+        <value>Safety</value>
+    </labels>
+    <labels>
+        <fullName>FM_App_Tab_Cost</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>App tab - Cost</shortDescription>
+        <value>Cost</value>
+    </labels>
+    <labels>
+        <fullName>FM_Date_Pill_Open</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Date filter - open pill alt text</shortDescription>
+        <value>Change date range</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Tab_Heading</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Adoption tab - section heading</shortDescription>
+        <value>Adoption</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Tab_Subhead</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Adoption tab - section subhead</shortDescription>
+        <value>Track who is enabled, who is active, and where engagement concentrates.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Tab_Heading</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Cost tab - section heading</shortDescription>
+        <value>Cost</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Tab_Subhead</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Cost tab - section subhead</shortDescription>
+        <value>Wallet actuals when available; otherwise tier-based Flex Credit estimates. See badges for confidence.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Section_Adoption_Rate</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Adoption - adoption rate heading</shortDescription>
+        <value>Adoption rate</value>
+    </labels>
+    <labels>
+        <fullName>FM_Section_Top_Contributors</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Adoption - top contributors heading</shortDescription>
+        <value>Top contributors</value>
+    </labels>
+    <labels>
+        <fullName>FM_Section_User_Adoption</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Adoption - user adoption heading</shortDescription>
+        <value>Per-user adoption</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Preset_Top_Prompts</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer preset chip - top prompts</shortDescription>
+        <value>Top prompts by tokens</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Preset_Tokens_By_User</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer preset chip - tokens by user</shortDescription>
+        <value>Tokens by user</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Preset_Tokens_By_Day</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer preset chip - tokens by day</shortDescription>
+        <value>Tokens by day</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Preset_Acceptance_By_Prompt</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer preset chip - acceptance by prompt</shortDescription>
+        <value>Acceptance by prompt</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Show_Detail</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer - show detail toggle label</shortDescription>
+        <value>Show detail table</value>
+    </labels>
+    <labels>
+        <fullName>FM_Explorer_Hide_Detail</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Explorer - hide detail toggle label</shortDescription>
+        <value>Hide detail table</value>
+    </labels>
 
     <!-- ═══════════ Overview sections ═══════════ -->
     <labels>
@@ -212,5 +364,95 @@
         <protected>false</protected>
         <shortDescription>Explorer - heavy users starter</shortDescription>
         <value>Users above 100 requests</value>
+    </labels>
+
+    <!-- ═══════════ Adoption analytics (Phase 4) ═══════════ -->
+    <labels>
+        <fullName>FM_Adoption_Pareto_Chip</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - Pareto chip prefix</shortDescription>
+        <value>Top 10% drive</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Pareto_Suffix</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - Pareto chip suffix</shortDescription>
+        <value>of volume</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Entitled_Label</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - entitled denominator badge</shortDescription>
+        <value>of entitled users</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Fallback_Label</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - active org users fallback denominator</shortDescription>
+        <value>of active org users</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Fallback_Tip</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Overview - tip when entitled denominator falls back</shortDescription>
+        <value>No AI permission set is configured. Add rows to FluentMetric_Entitlement_PermissionSet__mdt to track adoption against an entitled population.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Cohort_Column</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>User Adoption - cohort column header</shortDescription>
+        <value>Cohort</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Tier_Column</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>User Adoption - power-user tier column header</shortDescription>
+        <value>Tier</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Tier_Top1</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>User Adoption - power-user tier top 1%</shortDescription>
+        <value>Top 1%</value>
+    </labels>
+    <labels>
+        <fullName>FM_Adoption_Tier_Top10</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>User Adoption - power-user tier top 10%</shortDescription>
+        <value>Top 10%</value>
+    </labels>
+    <labels>
+        <fullName>FM_Section_Feature_Adoption</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Activity - feature adoption section heading</shortDescription>
+        <value>Feature adoption</value>
+    </labels>
+    <labels>
+        <fullName>FM_Section_Cohort_Retention</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>User Adoption - cohort retention disclosure heading</shortDescription>
+        <value>Cohort retention</value>
     </labels>
 </CustomLabels>

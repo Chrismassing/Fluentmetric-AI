@@ -1,0 +1,52 @@
+<template>
+    <div class="slds-p-around_small">
+        <template lwc:if={isFallbackDenominator}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_warning slds-m-bottom_small" role="status" aria-live="polite">
+                <lightning-icon icon-name="utility:info_alt" size="x-small" alternative-text="Note"></lightning-icon>
+                <span class="slds-m-left_x-small">{fallbackTip}</span>
+            </div>
+        </template>
+
+        <template lwc:if={showError}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                <span class="slds-m-left_x-small">{errorMessage}</span>
+            </div>
+        </template>
+
+        <template lwc:if={isLoading}>
+            <c-ai-insights-empty-state
+                variant="skeleton"
+                skeleton-rows="6"
+                title="Loading feature adoption">
+            </c-ai-insights-empty-state>
+        </template>
+
+        <template lwc:if={showEmptyState}>
+            <c-ai-insights-empty-state
+                title="No feature activity in this range"
+                message="No feature invocations were recorded in the selected date range."
+                icon-name="standard:apex">
+            </c-ai-insights-empty-state>
+        </template>
+
+        <template lwc:if={showTable}>
+            <template lwc:if={hasData}>
+                <div class="fm-datatable" role="region" aria-label="Feature adoption table">
+                    <lightning-datatable
+                        key-field="featureName"
+                        data={allRows}
+                        columns={columns}
+                        sorted-by={sortedBy}
+                        sorted-direction={sortedDirection}
+                        onsort={handleSort}
+                        onrowaction={handleRowAction}
+                        hide-checkbox-column
+                        column-widths-mode="auto">
+                    </lightning-datatable>
+                </div>
+            </template>
+        </template>
+    </div>
+    <c-ai-insights-drill-panel></c-ai-insights-drill-panel>
+</template>

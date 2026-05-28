@@ -4,17 +4,24 @@ import AI_INSIGHTS_DATE_RANGE from '@salesforce/messageChannel/AiInsightsDateRan
 import { TOOLTIPS } from 'c/aiInsightsTooltips';
 import FM_App_Title from '@salesforce/label/c.FM_App_Title';
 import FM_App_Subtitle from '@salesforce/label/c.FM_App_Subtitle';
+import FM_App_Tab_Overview from '@salesforce/label/c.FM_App_Tab_Overview';
+import FM_App_Tab_Adoption from '@salesforce/label/c.FM_App_Tab_Adoption';
+import FM_App_Tab_Explorer from '@salesforce/label/c.FM_App_Tab_Explorer';
+import FM_App_Tab_Safety from '@salesforce/label/c.FM_App_Tab_Safety';
+import FM_App_Tab_Cost from '@salesforce/label/c.FM_App_Tab_Cost';
 
 /**
  * Top-level shell for the FluentMetric AI dashboard.
  *
  * Layout:
- *   - Header + Date Filter are pinned above the tabset so the selected range
- *     applies to every tab via the AiInsightsDateRange LMS channel.
- *   - `lightning-tabset variant="standard"` wraps the dashboards. All tabs
+ *   - Compact sticky toolbar (title + date-range pill) sits above the tabset
+ *     so the selected range applies to every tab via the AiInsightsDateRange
+ *     LMS channel.
+ *   - Five tabs — Overview / Adoption / Explorer / Safety / Cost. All tabs
  *     stay mounted (no lazy loading) so each child's LMS subscribe runs
- *     during its own connectedCallback — this matters because the date-filter
- *     publish can race an unmounted child and leave it with null dates.
+ *     during its own connectedCallback — this matters because the
+ *     date-filter publish can race an unmounted child and leave it with
+ *     null dates.
  *
  * On connectedCallback this container also publishes a default date range
  * (configurable via App Builder, default 30 days) so subscribers have
@@ -43,7 +50,12 @@ export default class AiInsightsApp extends LightningElement {
 
     labels = {
         appTitle: FM_App_Title,
-        appSubtitle: FM_App_Subtitle
+        appSubtitle: FM_App_Subtitle,
+        tabOverview: FM_App_Tab_Overview,
+        tabAdoption: FM_App_Tab_Adoption,
+        tabExplorer: FM_App_Tab_Explorer,
+        tabSafety: FM_App_Tab_Safety,
+        tabCost: FM_App_Tab_Cost
     };
 
     connectedCallback() {

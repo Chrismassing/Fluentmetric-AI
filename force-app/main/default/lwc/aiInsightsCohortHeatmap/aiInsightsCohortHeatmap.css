@@ -1,0 +1,69 @@
+/*
+ * Cohort retention heatmap — pure CSS grid, no chart library. Each row is one
+ * ISO-week cohort; cells render age-week retention with a quantized color
+ * scale. Color is informational only; the cell text carries the data so the
+ * grid stays readable in monochrome / SLDS dark mode.
+ */
+.fm-heatmap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.fm-heatmap__row {
+    display: flex;
+    gap: 0.125rem;
+    align-items: stretch;
+    min-width: max-content;
+}
+
+.fm-heatmap__row_header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--slds-g-color-neutral-base-30, #444);
+    text-transform: uppercase;
+    letter-spacing: 0.0625rem;
+}
+
+.fm-heatmap__corner,
+.fm-heatmap__corner_size,
+.fm-heatmap__hdr,
+.fm-heatmap__label,
+.fm-heatmap__size,
+.fm-heatmap__cell {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    padding: 0 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+
+.fm-heatmap__corner,
+.fm-heatmap__label {
+    width: 7rem;
+    justify-content: flex-start;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.fm-heatmap__corner_size,
+.fm-heatmap__size {
+    width: 4rem;
+    justify-content: flex-end;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.fm-heatmap__hdr,
+.fm-heatmap__cell {
+    width: 3rem;
+}
+
+.fm-heatmap__hdr {
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}

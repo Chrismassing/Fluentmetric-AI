@@ -1,0 +1,54 @@
+/*
+ * Compact date-range pill. Renders as a single inline button by default and
+ * surfaces an SLDS popover when toggled. The popover positions absolutely
+ * relative to the pill, anchored to the right edge so it stays inside the
+ * app toolbar on narrow viewports.
+ */
+
+.fm-date-pill-root {
+    position: relative;
+    display: inline-block;
+}
+
+.fm-date-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--slds-g-spacing-1, 0.25rem);
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--slds-g-color-border-base-2, #c9c9c9);
+    border-radius: 999px;
+    background-color: var(--slds-g-color-surface-1, #ffffff);
+    color: var(--slds-g-color-neutral-base-10, #181818);
+    font-size: var(--slds-g-font-size-2, 0.8125rem);
+    line-height: 1.25rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.fm-date-pill:hover,
+.fm-date-pill:focus {
+    background-color: var(--slds-g-color-surface-container-1, #f3f3f3);
+    border-color: var(--slds-g-color-brand-base-50, #0176d3);
+    outline: none;
+}
+
+.fm-date-pill__icon {
+    --sds-c-icon-color-foreground-default: var(--slds-g-color-neutral-base-30, #444);
+}
+
+.fm-date-pill__label {
+    font-weight: 600;
+}
+
+.fm-date-pill__chevron {
+    --sds-c-icon-color-foreground-default: var(--slds-g-color-neutral-base-30, #444);
+}
+
+.fm-date-popover {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 18rem;
+    z-index: 10;
+}

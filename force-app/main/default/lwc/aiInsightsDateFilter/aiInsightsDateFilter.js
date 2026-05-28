@@ -1,6 +1,7 @@
 import { LightningElement, wire } from 'lwc';
 import { publish, MessageContext } from 'lightning/messageService';
 import AI_INSIGHTS_DATE_RANGE from '@salesforce/messageChannel/AiInsightsDateRange__c';
+import FM_Date_Pill_Open from '@salesforce/label/c.FM_Date_Pill_Open';
 
 const PRESET_LAST_7 = 'LAST_7';
 const PRESET_LAST_30 = 'LAST_30';
@@ -15,24 +16,47 @@ const PRESET_LABELS = {
 };
 
 /**
- * Shared date-range picker. Publishes { startDate, endDate, presetLabel } to
- * the AiInsightsDateRange LMS channel on any change. Default: Last 30 days.
+ * Compact date-range pill. The default state is a single button showing the
+ * active preset + resolved date window (e.g. "Last 30 days · May 1 – May 31").
+ * Clicking the pill opens an SLDS popover with the preset combobox + (when
+ * Custom is selected) two date inputs.
+ *
+ * Publishing semantics on the AiInsightsDateRange channel are unchanged from
+ * the previous flat layout — { startDate, endDate, presetLabel } fires on any
+ * preset change or custom-range commit.
  */
 export default class AiInsightsDateFilter extends LightningElement {
     preset = PRESET_LAST_30;
     customStart;
     customEnd;
     errorMessage;
+    popoverOpen = false;
+
+    // Currently-effective window (drives the pill label). Seeded with the
+    // default 30-day preset so the pill is meaningful before any LMS publish.
+    activeStartDate;
+    activeEndDate;
 
     @wire(MessageContext)
     messageContext;
 
+    labels = {
+        pillOpen: FM_Date_Pill_Open
+    };
+
     connectedCallback() {
-        // Seed the custom inputs with the default 30-day window so switching to
-        // Custom doesn't start empty.
+        // Seed the custom inputs and the pill label with the default 30-day
+        // window so the pill renders meaningful resolved dates from first
+        // paint, before any user interaction.
         const { startDate, endDate } = this.computeRange(PRESET_LAST_30);
         this.customStart = this.toDateInputValue(startDate);
         this.customEnd = this.toDateInputValue(endDate);
+        this.activeStartDate = startDate;
+        this.activeEndDate = endDate;
+    }
+
+    disconnectedCallback() {
+        this.removeOutsideClickListener();
     }
 
     get presetOptions() {
@@ -46,6 +70,61 @@ export default class AiInsightsDateFilter extends LightningElement {
 
     get isCustom() {
         return this.preset === PRESET_CUSTOM;
+    }
+
+    get chevronIcon() {
+        return this.popoverOpen ? 'utility:chevronup' : 'utility:chevrondown';
+    }
+
+    get chevronAltText() {
+        return this.popoverOpen ? 'Close date range' : this.labels.pillOpen;
+    }
+
+    /** "{preset} · {May 1 – May 31}" — single-line, fits the toolbar pill. */
+    get pillLabel() {
+        const presetLabel = PRESET_LABELS[this.preset] || PRESET_LABELS[PRESET_LAST_30];
+        const range = this.formatRangeLabel(this.activeStartDate, this.activeEndDate);
+        return range ? `${presetLabel} · ${range}` : presetLabel;
+    }
+
+    formatRangeLabel(start, end) {
+        if (!start || !end) return '';
+        const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return `${fmt(start)} – ${fmt(end)}`;
+    }
+
+    handleTogglePopover() {
+        this.popoverOpen = !this.popoverOpen;
+        if (this.popoverOpen) {
+            this.addOutsideClickListener();
+        } else {
+            this.removeOutsideClickListener();
+        }
+    }
+
+    handleClosePopover() {
+        this.popoverOpen = false;
+        this.removeOutsideClickListener();
+    }
+
+    addOutsideClickListener() {
+        if (this._outsideHandler) return;
+        this._outsideHandler = (event) => {
+            const root = this.template.querySelector('.fm-date-pill-root');
+            if (root && !root.contains(event.target)) {
+                this.popoverOpen = false;
+                this.removeOutsideClickListener();
+            }
+        };
+        // Defer attach so the click that opened the popover doesn't immediately close it.
+        setTimeout(() => document.addEventListener('click', this._outsideHandler), 0);
+    }
+
+    removeOutsideClickListener() {
+        if (this._outsideHandler) {
+            document.removeEventListener('click', this._outsideHandler);
+            this._outsideHandler = undefined;
+        }
     }
 
     handlePresetChange(event) {
@@ -96,6 +175,8 @@ export default class AiInsightsDateFilter extends LightningElement {
     }
 
     publishRange(startDate, endDate, presetLabel) {
+        this.activeStartDate = startDate;
+        this.activeEndDate = endDate;
         publish(this.messageContext, AI_INSIGHTS_DATE_RANGE, {
             startDate: startDate.toISOString(),
             endDate: endDate.toISOString(),

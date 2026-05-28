@@ -10,6 +10,12 @@ import FM_Explorer_Starter_Heading from '@salesforce/label/c.FM_Explorer_Starter
 import FM_Explorer_Starter_Top_Prompts from '@salesforce/label/c.FM_Explorer_Starter_Top_Prompts';
 import FM_Explorer_Starter_Flagged_Last_Week from '@salesforce/label/c.FM_Explorer_Starter_Flagged_Last_Week';
 import FM_Explorer_Starter_Heavy_Users from '@salesforce/label/c.FM_Explorer_Starter_Heavy_Users';
+import FM_Explorer_Preset_Top_Prompts from '@salesforce/label/c.FM_Explorer_Preset_Top_Prompts';
+import FM_Explorer_Preset_Tokens_By_User from '@salesforce/label/c.FM_Explorer_Preset_Tokens_By_User';
+import FM_Explorer_Preset_Tokens_By_Day from '@salesforce/label/c.FM_Explorer_Preset_Tokens_By_Day';
+import FM_Explorer_Preset_Acceptance_By_Prompt from '@salesforce/label/c.FM_Explorer_Preset_Acceptance_By_Prompt';
+import FM_Explorer_Show_Detail from '@salesforce/label/c.FM_Explorer_Show_Detail';
+import FM_Explorer_Hide_Detail from '@salesforce/label/c.FM_Explorer_Hide_Detail';
 
 const TT = TOOLTIPS.explorer;
 
@@ -105,6 +111,9 @@ export default class AiInsightsExplorer extends LightningElement {
     hasLoadedOnce = false;
     errorMessage;
     chartCollapsed = false;
+    // Detail table is collapsed by default — the chart already conveys the
+    // ranking; users only open the table when they need exact numbers.
+    tableCollapsed = true;
 
     // Starter-chip state: shown only until the user interacts. Once they run
     // any query explicitly (change group/metric, click a chip, etc.), we hide
@@ -117,8 +126,37 @@ export default class AiInsightsExplorer extends LightningElement {
         starterHeading: FM_Explorer_Starter_Heading,
         starterTopPrompts: FM_Explorer_Starter_Top_Prompts,
         starterFlagged: FM_Explorer_Starter_Flagged_Last_Week,
-        starterHeavyUsers: FM_Explorer_Starter_Heavy_Users
+        starterHeavyUsers: FM_Explorer_Starter_Heavy_Users,
+        presetTopPrompts: FM_Explorer_Preset_Top_Prompts,
+        presetTokensByUser: FM_Explorer_Preset_Tokens_By_User,
+        presetTokensByDay: FM_Explorer_Preset_Tokens_By_Day,
+        presetAcceptanceByPrompt: FM_Explorer_Preset_Acceptance_By_Prompt,
+        showDetail: FM_Explorer_Show_Detail,
+        hideDetail: FM_Explorer_Hide_Detail
     };
+
+    // Preset chips — each one drops a curated (groupBy, metric) combo onto
+    // the pivot. Replaces the standalone Prompt Analytics + Token
+    // Consumption screens which were absorbed into Explorer.
+    get presetChips() {
+        return [
+            { id: 'top_prompts', label: this.labels.presetTopPrompts, icon: 'utility:prompt_builder', groupBy: 'PromptTemplate', metric: 'TotalTokens' },
+            { id: 'tokens_by_user', label: this.labels.presetTokensByUser, icon: 'utility:user', groupBy: 'User', metric: 'TotalTokens' },
+            { id: 'tokens_by_day', label: this.labels.presetTokensByDay, icon: 'utility:date_input', groupBy: 'Day', metric: 'TotalTokens' },
+            { id: 'acceptance_by_prompt', label: this.labels.presetAcceptanceByPrompt, icon: 'utility:like', groupBy: 'PromptTemplate', metric: 'AcceptanceRate' }
+        ];
+    }
+
+    handlePresetClick(event) {
+        const presetId = event.currentTarget.dataset.preset;
+        const preset = this.presetChips.find((p) => p.id === presetId);
+        if (!preset) return;
+        this.hasInteracted = true;
+        this.groupBy = preset.groupBy;
+        this.metric = preset.metric;
+        this.rebuildColumns();
+        this.runQuery();
+    }
 
     get showStarters() {
         return !this.hasInteracted && !this.isLoading;
@@ -634,6 +672,22 @@ export default class AiInsightsExplorer extends LightningElement {
 
     handleToggleChart() {
         this.chartCollapsed = !this.chartCollapsed;
+    }
+
+    get tableVisible() {
+        return !this.tableCollapsed;
+    }
+
+    get tableToggleIcon() {
+        return this.tableCollapsed ? 'utility:chevronright' : 'utility:chevrondown';
+    }
+
+    get tableToggleLabel() {
+        return this.tableCollapsed ? this.labels.showDetail : this.labels.hideDetail;
+    }
+
+    handleToggleTable() {
+        this.tableCollapsed = !this.tableCollapsed;
     }
 
     get canExport() {

@@ -56,7 +56,20 @@ export const TOOLTIPS = {
         highlights:
             'Headline leaders for this date range: the most active user, most-invoked prompt template, ' +
             'heaviest-token-consuming model, and top calling feature. Each is computed from GROUP BY aggregates ' +
-            'on GenAIGatewayRequest__dlm and reflects the same scope as the KPI cards below.'
+            'on GenAIGatewayRequest__dlm and reflects the same scope as the KPI cards below.',
+        wowBadge:
+            'Week-over-week change for this metric: latest complete week vs. the prior week. ' +
+            'Computed in Apex from GROUP BY week aggregates on GenAIGatewayRequest__dlm. ' +
+            'Hidden when the prior window is empty so we never show "+Infinity%".',
+        paretoChip:
+            'Pareto check on engagement: the share of total requests driven by the top 10% of active users. ' +
+            'Sourced from PowerUserSegmentsDTO. A high number means usage concentrates in a few power users — ' +
+            'expand the User Adoption tab to see who, and target them for advanced training first.',
+        entitledDenominator:
+            'Adoption rate uses an entitled-user denominator: distinct active users in the range divided by ' +
+            'users assigned (directly or via PSG) to any FluentMetric_Entitlement_PermissionSet__mdt row marked ' +
+            'Is_Enabled__c = true. When no PS is configured the denominator falls back to total active org users ' +
+            'and a tip is shown so admins know the configuration step is missing.'
     },
 
     // ─── User Adoption (Phase 2 retrofit) ────────────────────────────────
@@ -198,17 +211,53 @@ export const TOOLTIPS = {
     // ─── App shell (tab tooltips) ────────────────────────────────────────
     app: {
         tabOverview:
-            'Headline KPIs — total requests, unique users, acceptance rate, token volume, feedback counts, and safety flags for the selected date range.',
-        tabActivity:
-            'Activity — switch the lens between Users, Prompts, and Tokens with one control. Each row drills into a side-sheet pivot. Cost analysis appears here when enabled.',
-        tabUsers:
-            'Per-user adoption — who is using Einstein GenAI, how often, and with which prompts. Sortable, searchable table.',
-        tabTokens:
-            'Token consumption with grouping by prompt, user, model, day, or week. Stacked bar chart + detail table.',
-        tabSafety:
-            'Content-safety scoring — flagged rate, category breakdown, and recent flagged outputs.',
+            'Glanceable KPIs — total requests, unique users, acceptance rate, token volume, feedback, and safety flags for the selected date range.',
+        tabAdoption:
+            'Adoption — funnel from active org users → entitled → active in window, top contributors leaderboard, per-user table, feature breadth, and cohort retention.',
         tabExplorer:
-            'Dynamic pivot — pick a Group By + Metric + optional filters and the controller runs a custom aggregation.'
+            'Dynamic pivot — pick a Group By + Metric + optional filters, and the controller runs a custom aggregation. Preset chips load common pivots in one click.',
+        tabSafety:
+            'Content-safety scoring — flagged rate, daily cadence, category breakdown, and recent flagged outputs.',
+        tabCost:
+            'Cost analysis — Wallet actuals when available, or tier-based Flex Credit estimates. Confidence badges show whether each figure is ACTUAL, HIGH, ESTIMATED, FALLBACK, or NOT_COSTED.',
+        // Legacy keys retained so older bindings keep rendering during the IA
+        // refactor rollout — safe to remove after the deploy lands.
+        tabActivity:
+            'Activity — superseded by Adoption + Explorer + Cost in the refactored navigation.',
+        tabUsers:
+            'Per-user adoption — moved to the Adoption tab.',
+        tabTokens:
+            'Token consumption — moved to the Explorer tab; use the "Tokens by user" or "Tokens by day" preset chip.'
+    },
+
+    // ─── Adoption tab container ──────────────────────────────────────────
+    adoption: {
+        tabHeading:
+            'Adoption shows you the journey from "could use AI" to "uses AI heavily" — funnel, leaderboard, per-user activity, feature breadth, and cohort retention all in one place.',
+        funnelStage:
+            'Each funnel stage is the count of users that survived the previous gate: Active org users (anyone licensed) → Entitled (assigned to an AI permission set in FluentMetric_Entitlement_PermissionSet__mdt) → Active in window (made at least one request in the selected range).',
+        contributorRank:
+            'Top contributors are the highest-volume users in the date range. Toggle between Tokens (sum of input + output) and Requests (count of GenAIGatewayRequest__dlm rows) — the bar lengths normalize against the leader so the ranking is visually obvious.'
+    },
+
+    // ─── Cost tab container ──────────────────────────────────────────────
+    cost: {
+        tabHeading:
+            'Cost is computed Wallet-first: when Enable_Wallet_Costs__c is on AND TenantEnrichedUsageEvent__dll is queryable, figures come from Salesforce Digital Wallet (the same data Salesforce uses to bill you). Otherwise, FluentMetric_Rate_Card__mdt × token counts produces a tier-based estimate.',
+        rateCardSettings:
+            'Adjust USD-per-Flex-Credit, the contracted discount, and the fallback model used when a rate card has no exact match. Saves to FluentMetric_Cost_Settings__c — admins only.'
+    },
+
+    // ─── Explorer presets (chips above the pivot controls) ──────────────
+    explorerPresets: {
+        topPrompts:
+            'One-click pivot: Group by Prompt Template, metric = Total Tokens. Equivalent to picking those values manually — useful for spotting which prompts dominate token spend.',
+        tokensByUser:
+            'One-click pivot: Group by User, metric = Total Tokens. Surfaces the heaviest token consumers regardless of feedback or feature.',
+        tokensByDay:
+            'One-click pivot: Group by Day, metric = Total Tokens. Shows token-volume trend over time inside the selected range.',
+        acceptanceByPrompt:
+            'One-click pivot: Group by Prompt Template, metric = Acceptance Rate. Use to find prompts where users are dissatisfied (low acceptance) regardless of volume.'
     },
 
     // ─── Entity Details modal (drill-in from any table row) ─────────────

@@ -5,6 +5,10 @@ import getUsageByUser from '@salesforce/apex/AiInsightsController.getUsageByUser
 import getCostSettings from '@salesforce/apex/AiInsightsController.getCostSettings';
 import { abbreviateNumber, formatPercent } from './numberFormat';
 import { TOOLTIPS } from 'c/aiInsightsTooltips';
+import FM_Adoption_Cohort_Column from '@salesforce/label/c.FM_Adoption_Cohort_Column';
+import FM_Adoption_Tier_Column from '@salesforce/label/c.FM_Adoption_Tier_Column';
+import FM_Adoption_Tier_Top1 from '@salesforce/label/c.FM_Adoption_Tier_Top1';
+import FM_Adoption_Tier_Top10 from '@salesforce/label/c.FM_Adoption_Tier_Top10';
 
 const TT = TOOLTIPS.userAdoption;
 
@@ -73,6 +77,21 @@ export default class AiInsightsUserAdoption extends LightningElement {
             }
         },
         {
+            label: FM_Adoption_Tier_Column,
+            fieldName: 'tierLabel',
+            type: 'text',
+            sortable: true,
+            sortBy: 'tierRank',
+            helpText:
+                'Pareto power-user segment: Top 1% / Top 10% / Standard. ' +
+                'Derived client-side by sorting users by request count DESC and bucketing the top tail.',
+            cellAttributes: {
+                iconName: { fieldName: 'tierIcon' },
+                iconPosition: 'left',
+                class: { fieldName: 'tierClass' }
+            }
+        },
+        {
             label: 'Requests',
             fieldName: 'requestCount',
             type: 'number',
@@ -130,6 +149,16 @@ export default class AiInsightsUserAdoption extends LightningElement {
                 hour: '2-digit',
                 minute: '2-digit'
             }
+        },
+        {
+            label: FM_Adoption_Cohort_Column,
+            fieldName: 'cohortLabel',
+            type: 'text',
+            sortable: true,
+            sortBy: 'cohortKey',
+            helpText:
+                'ISO-8601 week the user was first observed (YYYY-Www). Derived client-side from the firstUsed timestamp; ' +
+                'sortable so cohort waves cluster together.'
         },
         { label: 'Top Prompts', fieldName: 'topPromptsDisplay', type: 'text', sortable: false, wrapText: true, helpText: TT.topPrompts },
         { label: 'Profile', fieldName: 'profileName', type: 'text', sortable: true, helpText: TT.profileName },
@@ -217,6 +246,9 @@ export default class AiInsightsUserAdoption extends LightningElement {
             const data = await getUsageByUser({ startDate: this.startDate, endDate: this.endDate });
             this.rawRows = Array.isArray(data) ? data : [];
             this.allRows = this.rawRows.map((row) => this.toViewModel(row));
+            // Pareto tier assignment requires the full sorted set, so it runs
+            // once after every row has its base view-model fields populated.
+            this.assignPowerUserTiers();
             this.applySort();
             this.applyFilterAndPagination();
             this.hasLoadedOnce = true;
@@ -237,6 +269,7 @@ export default class AiInsightsUserAdoption extends LightningElement {
         const ratioPct = this.ratePercent(row.feedbackRatio);
         const usd = Number(row.estimatedUsd || 0);
         const conf = (row.costConfidence || 'HIGH').toUpperCase();
+        const cohort = this.cohortFromTimestamp(row.firstUsed);
         return {
             ...row,
             totalTokensDisplay: abbreviateNumber(row.totalTokens || 0),
@@ -246,8 +279,85 @@ export default class AiInsightsUserAdoption extends LightningElement {
             feedbackRatioIcon: this.feedbackRatioIcon(ratioPct),
             feedbackRatioClass: this.feedbackRatioCellClass(ratioPct),
             costConfidence: conf,
-            costConfidenceLabel: this.confidenceLabel(conf)
+            costConfidenceLabel: this.confidenceLabel(conf),
+            // Cohort and tier defaults; tier is reassigned post-load by
+            // assignPowerUserTiers once every row's request count is known.
+            cohortLabel: cohort.label,
+            cohortKey: cohort.key,
+            tierLabel: 'Standard',
+            tierRank: 3,
+            tierIcon: null,
+            tierClass: 'slds-text-color_weak'
         };
+    }
+
+    // Returns { label, key } where label is the human-readable ISO-week
+    // ('YYYY-Www', e.g. '2026-W21') and key is sortable ('YYYY-Www' is
+    // already sortable as a string when zero-padded).
+    cohortFromTimestamp(value) {
+        if (!value) return { label: '—', key: '' };
+        const ts = typeof value === 'number' ? value : Date.parse(value);
+        if (Number.isNaN(ts)) return { label: '—', key: '' };
+        // ISO 8601 week-of-year: Thursday-of-week's calendar year, week
+        // numbered from the Monday of the year's first week (week containing
+        // its first Thursday). Cribbed from the standard JS recipe.
+        const d = new Date(ts);
+        const dayNr = (d.getUTCDay() + 6) % 7; // 0=Mon, 6=Sun
+        d.setUTCDate(d.getUTCDate() - dayNr + 3); // shift to Thursday
+        const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+        const weekNr =
+            1 +
+            Math.round(
+                ((d - firstThursday) / 86400000 -
+                    3 +
+                    ((firstThursday.getUTCDay() + 6) % 7)) /
+                    7
+            );
+        const wk = String(weekNr).padStart(2, '0');
+        const yr = d.getUTCFullYear();
+        const label = `${yr}-W${wk}`;
+        return { label, key: label };
+    }
+
+    // Pareto buckets: top-1% / top-10% / standard. Sorts a copy of allRows
+    // by request count DESC, walks the top tail, and writes tierLabel +
+    // tierRank + tierIcon + tierClass back into the original row objects so
+    // both the datatable cell and any sort-by-tier behave consistently.
+    assignPowerUserTiers() {
+        if (!Array.isArray(this.allRows) || this.allRows.length === 0) return;
+        const sorted = [...this.allRows].sort(
+            (a, b) => (Number(b.requestCount) || 0) - (Number(a.requestCount) || 0)
+        );
+        const total = sorted.length;
+        const top1Count = Math.max(1, Math.ceil(total * 0.01));
+        const top10Count = Math.max(1, Math.ceil(total * 0.1));
+        sorted.forEach((row, idx) => {
+            // Skip zero-request rows even when they fall inside the percentile
+            // — a tier badge on a user with 0 activity is misleading.
+            if ((row.requestCount || 0) <= 0) {
+                row.tierLabel = 'Standard';
+                row.tierRank = 3;
+                row.tierIcon = null;
+                row.tierClass = 'slds-text-color_weak';
+                return;
+            }
+            if (idx < top1Count) {
+                row.tierLabel = FM_Adoption_Tier_Top1;
+                row.tierRank = 1;
+                row.tierIcon = 'utility:trophy';
+                row.tierClass = 'fm-tier_top1';
+            } else if (idx < top10Count) {
+                row.tierLabel = FM_Adoption_Tier_Top10;
+                row.tierRank = 2;
+                row.tierIcon = 'utility:trending';
+                row.tierClass = 'fm-tier_top10';
+            } else {
+                row.tierLabel = 'Standard';
+                row.tierRank = 3;
+                row.tierIcon = null;
+                row.tierClass = 'slds-text-color_weak';
+            }
+        });
     }
 
     confidenceLabel(conf) {

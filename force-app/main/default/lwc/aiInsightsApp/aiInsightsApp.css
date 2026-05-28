@@ -1,12 +1,36 @@
 /*
- * Container uses SLDS spacing utilities only — no custom positioning needed.
- * Kept as a lightweight stylesheet for future dashboard-level tweaks.
+ * App shell layout. The compact toolbar sticks to the top of the scroll
+ * container so users always have the date-range pill in reach, and the
+ * surface-2 grey background still frames the tabset card without bleeding
+ * extra padding around the edges.
  */
 
 :host {
     display: block;
     background-color: var(--slds-g-color-surface-container-2, #f3f3f3);
     min-height: 100%;
+}
+
+.fm-app-shell {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Sticky toolbar — single-row header with title + date pill. */
+.fm-app-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background-color: var(--slds-g-color-surface-1, #ffffff);
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.fm-app-toolbar__title {
+    min-width: 0;
+}
+
+.fm-app-toolbar__date {
+    flex: 0 0 auto;
 }
 
 /* The tabset sits inside an slds-card wrapper so it feels contained. Drop the
@@ -19,11 +43,4 @@
 
 .fm-app-tabs .fm-tabset {
     display: block;
-}
-
-/* Date filter docked into the right side of the app header. Shrinks gracefully
-   onto its own line below the title on narrow viewports. */
-.fm-app-date-filter {
-    flex: 0 0 auto;
-    min-width: 12rem;
 }
