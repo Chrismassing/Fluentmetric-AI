@@ -21,35 +21,37 @@
 │  ┌────────────────────▼───────────────────────────────┐  │
 │  │           AiInsightsService.cls                     │  │
 │  │    (Business logic, aggregation, ID resolution)     │  │
-│  └───────┬────────────────────────────┬───────────────┘  │
-│          │                            │                  │
-│  ┌───────▼──────────┐  ┌─────────────▼───────────────┐  │
-│  │AiInsightsDAO.cls │  │  UserResolverService.cls     │  │
-│  │(DMO SOQL queries)│  │  (User + PromptTemplate      │  │
-│  │                  │  │   name resolution + cache)    │  │
-│  └───────┬──────────┘  └─────────────┬───────────────┘  │
-│          │                            │                  │
-└──────────┼────────────────────────────┼─────────────────┘
-           │                            │
-   ┌───────▼──────────┐  ┌─────────────▼───────────────┐
-   │   Data Cloud      │  │   Standard Salesforce       │
-   │   DMOs (__dlm)    │  │   Objects                   │
-   │                   │  │                             │
-   │ GenAIGateway      │  │ User                        │
-   │   Request         │  │ GenAiPromptTemplate         │
-   │ GenAIGateway      │  │   (if accessible)           │
-   │   RequestTags     │  │                             │
-   │ GenAIGateway      │  │                             │
-   │   Response        │  │                             │
-   │ GenAIGeneration   │  │                             │
-   │ GenAIContentQual  │  │                             │
-   │ GenAIContentCat   │  │                             │
-   │ GenAIFeedback     │  │                             │
-   │ GenAIFeedback     │  │                             │
-   │   Detail          │  │                             │
-   │ GenAIApp          │  │                             │
-   │   Generation      │  │                             │
-   └───────────────────┘  └─────────────────────────────┘
+│  └──┬───────────────┬─────────────────┬──────────────┬─┘  │
+│     │               │                 │              │    │
+│  ┌──▼─────────┐ ┌──▼──────────────┐ ┌▼────────────┐ ┌▼──────────────┐
+│  │AiInsights  │ │UserResolver     │ │Cost         │ │Entitlement   │
+│  │DAO.cls     │ │Service.cls      │ │Calculator   │ │Service.cls   │
+│  │(DMO SOQL)  │ │(User + Prompt   │ │Service.cls  │ │(PSA/PSG/     │
+│  │            │ │ name cache)     │ │(FC + Wallet)│ │ Profile      │
+│  │            │ │                 │ │             │ │ resolver)    │
+│  └──┬─────────┘ └─────────────────┘ └──┬──────────┘ └──┬───────────┘
+│     │                                  │               │            │
+└─────┼──────────────────────────────────┼───────────────┼────────────┘
+      │                                  │               │
+   ┌──▼────────────────┐  ┌──────────────▼────┐  ┌──────▼──────────────┐
+   │   Data Cloud       │  │   Digital Wallet   │  │   Standard          │
+   │   DMOs (__dlm)     │  │   DLO (__dll)      │  │   Salesforce        │
+   │                    │  │                    │  │   Objects           │
+   │ GenAIGateway       │  │ TenantEnriched     │  │ User                │
+   │   Request          │  │   UsageEvent__dll  │  │ Profile             │
+   │ GenAIGateway       │  │                    │  │ PermissionSet       │
+   │   RequestTags      │  │                    │  │ PermissionSetGroup  │
+   │ GenAIGateway       │  │                    │  │ PermissionSet       │
+   │   Response         │  │                    │  │   Assignment        │
+   │ GenAIGeneration    │  │                    │  │ GenAiPromptTemplate │
+   │ GenAIContentQual   │  │                    │  │   (if accessible)   │
+   │ GenAIContentCat    │  │                    │  │                     │
+   │ GenAIFeedback      │  │                    │  │                     │
+   │ GenAIFeedback      │  │                    │  │                     │
+   │   Detail           │  │                    │  │                     │
+   │ GenAIApp           │  │                    │  │                     │
+   │   Generation       │  │                    │  │                     │
+   └────────────────────┘  └────────────────────┘  └─────────────────────┘
 ```
 
 ## Layer Responsibilities
@@ -107,8 +109,34 @@ uses the live `AiWalletDAO`, tests inject `AiWalletDAOMock`. When
 `Enable_Wallet_Costs__c` is true AND `isWalletAvailable() == true`, the
 service treats Wallet as authoritative and renders headline cost figures with
 the **`ACTUAL`** confidence badge. Otherwise it falls back to the existing
-tier-rate estimate. See `Documents/WALLET-LIVE-SCHEMA.md` for the verified
+tier-rate estimate. See [../Developer/wallet-live-schema.md](../Developer/wallet-live-schema.md) for the verified
 schema and the prod-only constraint disclaimer.
+
+### Layer 4d: EntitlementService.cls (Adoption Denominator)
+
+Resolves the **entitled-user denominator** for adoption analytics. Reads
+enabled rows from `FluentMetric_Entitlement_PermissionSet__mdt`, buckets
+them by `Entitlement_Type__c` (`PermissionSet` / `PermissionSetGroup` /
+`Profile`), and routes each bucket to the right query path:
+
+- **PermissionSet** → `PermissionSet.Name` + `PermissionSetAssignment.PermissionSetId`
+- **PermissionSetGroup** → `PermissionSetGroup.DeveloperName` + `PermissionSetAssignment.PermissionSetGroupId` (PSA exposes PSG membership directly)
+- **Profile** → `Profile.Name` + `User.ProfileId`
+
+The entitled-user set is the union across all enabled rows, deduplicated by
+user Id. Active-only filtering: PSA `(ExpirationDate = NULL OR >= TODAY)` +
+`Assignee.IsActive = TRUE`; profile path filters `User.IsActive = TRUE`.
+
+`getSnapshot(activeUserIds)` returns counts plus `adoptionRate = (active ∩
+entitled) / entitled`, bounded to [0, 1.0]. Any failure mode (CMT empty,
+zero matching names in org, query exception, FLS) flips
+`entitledFallback = true` and the denominator silently switches to "all
+active org users" so dashboards never break. Results are cached in static
+transaction-scoped fields — Platform Cache is intentionally avoided because
+PSA/Profile writes have no event hook to invalidate the entry.
+
+`AiInsightsService` accepts an `IEntitlementService` via constructor
+injection; tests use `EntitlementServiceMock` for deterministic snapshots.
 
 ### Layer 4b: UserResolverService.cls (Reference Data)
 

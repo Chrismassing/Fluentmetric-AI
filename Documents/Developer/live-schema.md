@@ -1,6 +1,6 @@
-# LIVE-SCHEMA.md — Verified DMO Schema (overrides DATA-MODEL.md where they disagree)
+# LIVE-SCHEMA.md — Verified DMO Schema (overrides Architect/data-model.md where they disagree)
 
-**Source:** `sf sobject describe` against `cvk-dev` org on 2026-04-29. When this doc contradicts [DATA-MODEL.md](./DATA-MODEL.md), **trust this doc** — the original was written from Salesforce's help article, which uses descriptive PascalCase names. The live platform uses camelCase.
+**Source:** `sf sobject describe` against `cvk-dev` org on 2026-04-29. When this doc contradicts [../Architect/data-model.md](../Architect/data-model.md), **trust this doc** — the original was written from Salesforce's help article, which uses descriptive PascalCase names. The live platform uses camelCase.
 
 ## Naming Conventions — LIVE
 

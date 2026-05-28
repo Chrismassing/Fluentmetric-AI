@@ -8,21 +8,38 @@ force-app/main/default/classes/
 │   └── AiInsightsController.cls          // @AuraEnabled methods for LWC
 ├── services/
 │   ├── AiInsightsService.cls             // Business logic and orchestration
-│   └── UserResolverService.cls           // ID→Name resolution with caching
+│   ├── UserResolverService.cls           // ID→Name resolution with caching
+│   ├── CostCalculatorService.cls         // FC/USD with Wallet-actual override
+│   ├── IEntitlementService.cls           // Entitled-denominator interface
+│   ├── EntitlementService.cls            // PS/PSG/Profile resolver
+│   └── EntitlementServiceMock.cls        // Deterministic test snapshot
 ├── dao/
-│   └── AiInsightsDAO.cls                 // All DMO SOQL queries
+│   ├── IAiInsightsDAO.cls                // DAO interface (mockable)
+│   ├── AiInsightsDAO.cls                 // All DMO SOQL queries
+│   ├── AiInsightsDAOMock.cls             // Hand-crafted SObject lists for tests
+│   ├── IAiWalletDAO.cls                  // Wallet DAO interface
+│   ├── AiWalletDAO.cls                   // TenantEnrichedUsageEvent__dll queries
+│   └── AiWalletDAOMock.cls               // Wallet test double
 ├── dto/
-│   ├── UsageOverviewDTO.cls              // Summary metrics
+│   ├── UsageOverviewDTO.cls              // Summary metrics + adoption fields
 │   ├── UserUsageDTO.cls                  // Per-user usage data
 │   ├── PromptUsageDTO.cls                // Per-prompt usage data
 │   ├── PromptOutputDTO.cls               // Individual prompt outputs
 │   ├── TokenConsumptionDTO.cls           // Token usage data
 │   ├── ContentSafetyDTO.cls              // Safety/quality data
+│   ├── OverviewTrendsDTO.cls             // Trend lines + weekly trend
+│   ├── EntitlementSnapshotDTO.cls        // Adoption funnel data
+│   ├── AdoptionCohortsDTO.cls            // Cohort retention matrix (≤26 wks)
+│   ├── OrgAdoptionDeltasDTO.cls          // 8-week trailing WoW deltas
+│   ├── PowerUserSegmentsDTO.cls          // Pareto buckets (top10%/top1%)
+│   ├── FeatureAdoptionDTO.cls            // Per-feature breadth/depth
 │   └── DateRangeFilter.cls               // Reusable date range input
 └── tests/
     ├── AiInsightsControllerTest.cls
     ├── AiInsightsServiceTest.cls
     ├── AiInsightsDAOTest.cls
+    ├── EntitlementServiceTest.cls
+    ├── CostCalculatorServiceTest.cls
     └── UserResolverServiceTest.cls
 ```
 
@@ -63,6 +80,103 @@ public class UsageOverviewDTO {
     @AuraEnabled public Integer toxicFlagCount;
     @AuraEnabled public Integer feedbackCount;
     @AuraEnabled public String dateRangeLabel;        // e.g., "Last 30 days"
+    // Adoption (Phase 1) — populated by EntitlementService.getSnapshot()
+    @AuraEnabled public Integer entitledUserCount;    // Users assigned to a configured PS / PSG / Profile
+    @AuraEnabled public Integer totalActiveOrgUsers;  // Fallback denominator
+    @AuraEnabled public Decimal adoptionRate;         // (active ∩ entitled) / entitled, [0, 1]
+    @AuraEnabled public Boolean entitledFallback;     // true ⇒ denominator is "all active users"
+    // WoW deltas
+    @AuraEnabled public Decimal requestsWowPct;
+    @AuraEnabled public Decimal usersWowPct;
+    @AuraEnabled public Decimal tokensWowPct;
+}
+```
+
+### EntitlementSnapshotDTO
+
+```apex
+public class EntitlementSnapshotDTO {
+    @AuraEnabled public Integer entitledCount;
+    @AuraEnabled public Integer activeCount;
+    @AuraEnabled public Integer totalActiveOrgUsers;
+    @AuraEnabled public Integer unmatchedActiveCount; // Active users not in entitled set
+    @AuraEnabled public Decimal adoptionRate;         // (active ∩ entitled) / entitled
+    @AuraEnabled public Boolean entitledFallback;
+    @AuraEnabled public List<String> configuredPermissionSets;
+}
+```
+
+### AdoptionCohortsDTO
+
+```apex
+public class AdoptionCohortsDTO {
+    public static final Integer MAX_COHORT_WEEKS = 26;
+    @AuraEnabled public List<CohortRow> rows;
+    @AuraEnabled public Boolean truncated;            // true if 50k row cap was hit
+
+    public class CohortRow {
+        @AuraEnabled public String weekIsoLabel;      // e.g. "2026-W18"
+        @AuraEnabled public Date weekStart;
+        @AuraEnabled public Integer cohortSize;
+        @AuraEnabled public Integer ageInWeeks;
+        @AuraEnabled public List<Decimal> retentionByWeek; // [0..1] per age-week
+    }
+}
+```
+
+### OrgAdoptionDeltasDTO
+
+```apex
+public class OrgAdoptionDeltasDTO {
+    @AuraEnabled public List<WeekDelta> weeks;        // 8 entries, oldest first
+    @AuraEnabled public Decimal latestRequestsWowPct;
+    @AuraEnabled public Decimal latestUsersWowPct;
+    @AuraEnabled public Decimal latestTokensWowPct;
+
+    public class WeekDelta {
+        @AuraEnabled public Date weekStart;
+        @AuraEnabled public String weekIsoLabel;
+        @AuraEnabled public Integer requests;
+        @AuraEnabled public Integer activeUsers;
+        @AuraEnabled public Long tokens;
+        @AuraEnabled public Decimal requestsWowPct;
+        @AuraEnabled public Decimal usersWowPct;
+        @AuraEnabled public Decimal tokensWowPct;
+    }
+}
+```
+
+### PowerUserSegmentsDTO
+
+```apex
+public class PowerUserSegmentsDTO {
+    @AuraEnabled public Decimal top10PercentVolumeShare; // 0..1
+    @AuraEnabled public Decimal top1PercentVolumeShare;
+    @AuraEnabled public Integer top10PercentUserCount;
+    @AuraEnabled public Integer top1PercentUserCount;
+    @AuraEnabled public List<TopUser> topUsers;       // Top-10% slice for drill
+
+    public class TopUser {
+        @AuraEnabled public Id userId;
+        @AuraEnabled public String userName;
+        @AuraEnabled public Integer requestCount;
+        @AuraEnabled public Long totalTokens;
+        @AuraEnabled public String tier;              // 'TOP_1' | 'TOP_10'
+    }
+}
+```
+
+### FeatureAdoptionDTO
+
+```apex
+public class FeatureAdoptionDTO {
+    @AuraEnabled public String featureName;
+    @AuraEnabled public Integer uniqueUserCount;
+    @AuraEnabled public Integer repeatUserCount;      // ≥2 invocations in range
+    @AuraEnabled public Decimal breadthRate;          // uniqueUsers / entitledCount
+    @AuraEnabled public Decimal depthMedian;          // median invocations / user
+    @AuraEnabled public DateTime firstObservedInOrg;
+    @AuraEnabled public DateTime firstObservedInRange;
 }
 ```
 
@@ -101,6 +215,12 @@ public class PromptUsageDTO {
     @AuraEnabled public Integer toxicFlagCount;
     @AuraEnabled public DateTime firstUsed;
     @AuraEnabled public DateTime lastUsed;
+    // Adoption (Phase 1) — populated when entitlement snapshot is available
+    @AuraEnabled public Decimal breadthRate;          // uniqueUsers / entitledCount
+    @AuraEnabled public Integer repeatUserCount;
+    @AuraEnabled public Decimal medianInvocationsPerUser;
+    @AuraEnabled public DateTime firstObservedInOrg;  // unbounded MIN(timestamp__c)
+    @AuraEnabled public String acceptanceSource;      // 'EXACT' | 'SAMPLED' | 'CORRELATED' | null
 }
 ```
 
@@ -365,6 +485,46 @@ public with sharing class UserResolverService {
     }
 }
 ```
+
+## EntitlementService — Adoption Denominator
+
+```apex
+public interface IEntitlementService {
+    Set<Id> getEntitledUserIds();
+    List<String> getConfiguredPermissionSets();
+    EntitlementSnapshotDTO getSnapshot(Set<String> activeUserIdStrings);
+}
+
+public with sharing class EntitlementService implements IEntitlementService {
+    // Buckets the configured CMT rows by Entitlement_Type__c
+    // (PermissionSet / PermissionSetGroup / Profile) and routes each to
+    // the right query path. Static transaction-scoped cache; no Platform
+    // Cache (PSA writes have no event hook for invalidation).
+
+    public Set<Id> getEntitledUserIds() { ... }
+    public List<String> getConfiguredPermissionSets() { ... }
+    public EntitlementSnapshotDTO getSnapshot(Set<String> activeUserIdStrings) {
+        // 1. Load + bucket CMT rows
+        // 2. Resolve names: PermissionSet.Name / PSG.DeveloperName / Profile.Name
+        // 3. Query users:
+        //      PSA WHERE PermissionSetId IN :psIds OR PermissionSetGroupId IN :psgIds
+        //          AND Assignee.IsActive = TRUE
+        //      User WHERE ProfileId IN :profileIds AND IsActive = TRUE
+        // 4. Compute adoptionRate = (active ∩ entitled) / entitled, [0, 1.0]
+        // 5. Any failure ⇒ entitledFallback = true, denominator = total active users
+    }
+}
+```
+
+**Configuration:** `FluentMetric_Entitlement_PermissionSet__mdt` rows.
+Each row has `Permission_Set_Developer_Name__c` (the source dev name),
+`Entitlement_Type__c` (`PermissionSet` / `PermissionSetGroup` / `Profile`),
+and `Is_Enabled__c`. Rows with a blank or unknown type fold into the
+`PermissionSet` bucket so package upgrades don't silently drop them.
+
+**Tests** use `EntitlementServiceMock` for deterministic snapshots.
+`AiInsightsService` accepts an `IEntitlementService` via constructor
+injection so tests don't have to seed `PermissionSetAssignment` rows.
 
 ## DAO Layer — DMO Query Encapsulation
 

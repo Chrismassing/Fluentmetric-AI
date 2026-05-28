@@ -12,7 +12,7 @@
 
 Important corrections vs. the doc-derived guesses:
 - The DLO suffix is **`__dll`** (Data Lake — `__dll`) **not** `__dlm` (Data Model). Verified by `sobject list` and `sobject describe`.
-- All field names are **lowercase + `__c`** (e.g. `unitsconsumed__c`, `eventtime__c`, `userid__c`) — not camelCase like FluentMetric AI's GenAI DMOs (which still use camelCase per [LIVE-SCHEMA.md](./LIVE-SCHEMA.md)).
+- All field names are **lowercase + `__c`** (e.g. `unitsconsumed__c`, `eventtime__c`, `userid__c`) — not camelCase like FluentMetric AI's GenAI DMOs (which still use camelCase per [live-schema.md](./live-schema.md)).
 - `SELECT COUNT()` is **rejected** by this DLO ("SELECT COUNT() is not supported"). `isWalletAvailable()` uses `SELECT Id FROM ... LIMIT 1` instead.
 - Resource/root-resource tags are stored as a **JSON-encoded string column** (`resourcetags__c`, `rootresourcetags__c`) directly on the same DLO — there is no separate Consumption Insights Extended object. Custom-tag aggregation parses this JSON in Apex.
 - `userid__c` is on the DLO, so Wallet **can** attribute consumption per Salesforce User Id. The original plan's "Wallet doesn't tag by user" caveat is wrong for this schema.
@@ -132,7 +132,7 @@ This tells us:
 
 - [x] Confirm `TenantEnrichedUsageEvent__dll` exists as a queryable object — verified 2026-05-13 in cvk-dev.
 - [x] Capture verbatim field list via `sf sobject describe`.
-- [x] Update [AiWalletDAO.cls](../force-app/main/default/classes/dao/AiWalletDAO.cls) field-name constant block to lowercase + `__dll`.
+- [x] Update [AiWalletDAO.cls](../../force-app/main/default/classes/dao/AiWalletDAO.cls) field-name constant block to lowercase + `__dll`.
 - [x] Verify all DAO methods succeed against the empty live DLO without exceptions.
 - [ ] Once consumption-product events bill through (`unitsconsumed__c` > 0 rows appear): rerun `CostCalculatorWalletTest` against a real Wallet-tagged date range.
 - [ ] Reconcile FluentMetric AI Cost panel "Total Flex Credits" with Salesforce Consumption Analytics (Tableau Next) — within $0.01.

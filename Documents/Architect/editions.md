@@ -10,6 +10,7 @@ matches the licenses your customer already owns.
 | Surface | 19 native LWCs on a Lightning App Page | Lightning App Page (KPI tile + launcher + agent chat) + the Tableau Einstein app for full dashboards |
 | Data path | Apex → Data Cloud DMOs (SOQL) | Apex → Data Cloud DMOs (SOQL) for the Salesforce-side surface; Tableau Next semantic model → Data Cloud (native, in-platform) for the workspace |
 | Dashboards | KPI cards, drill panels, Explorer pivot | Tableau Next workspace dashboards (drag-drop pivot, full canvas) |
+| Adoption analytics | Cohort retention, WoW deltas, power-user Pareto, feature breadth/depth — measured against an **entitled-population denominator** (configurable Permission Sets / PSGs / Profiles) | Same metrics modelled in the semantic dataset; entitlement denominator surfaced via Apex actions |
 | Conversational AI | — | Agentforce "Tableau Analyst" agent with three Apex invocable actions (overview / users / prompts) |
 | Cost engine | `CostCalculatorService` (Flex Credit modeling) | Modeled inside Tableau Next semantic dataset |
 | Apex dependency | Self-contained | Depends on the Lightning edition's Apex services, DAO, DTOs |
@@ -55,7 +56,11 @@ side-by-side: the Lightning edition for ops users (curated dashboards), and
 the Tableau Next edition for analysts who want raw exploratory power +
 conversational agent.
 
-## Setup guides
+## Where to go next
 
-- Lightning edition setup → [LIGHTNING-EDITION.md](./LIGHTNING-EDITION.md)
-- Tableau Next edition setup → [TABLEAU-EDITION.md](./TABLEAU-EDITION.md)
+- **Architect — design rationale**
+  - Lightning edition: [lightning-edition.md](./lightning-edition.md)
+  - Tableau Next edition: [tableau-edition.md](./tableau-edition.md)
+- **Admin — install runbooks**
+  - Lightning edition: [../Admin/02-install-lightning.md](../Admin/02-install-lightning.md)
+  - Tableau Next edition: [../Admin/03-install-tableau.md](../Admin/03-install-tableau.md)

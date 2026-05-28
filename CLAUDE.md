@@ -4,7 +4,7 @@
 
 A Salesforce-native dashboard app that makes Einstein Generative AI Audit & Feedback DMO data **humanly readable** — resolving User IDs to names, prompt developer names to labels, pre-joining the 9+ Data Cloud DMOs, and presenting curated dashboards for admins, prompt engineers, and AI product owners.
 
-**Two editions ship from this repo as separate unlocked packages — see [Documents/EDITIONS.md](Documents/EDITIONS.md):**
+**Two editions ship from this repo as separate unlocked packages — see [Documents/Architect/editions.md](Documents/Architect/editions.md):**
 
 1. **Lightning Edition** (`force-app/`) — 19 native LWCs over a 4-layer Apex stack. **No Tableau license required.** This is the original product.
 2. **Tableau Next Edition** (`force-app-tableau/`) — Lightning App Page entry (KPI tile, Tableau Next launcher, agent chat) plus a Tableau Next workspace (`AnalyticsWorkspace`) and a `FluentMetric_Tableau_Analyst` Agentforce agent backed by three Apex invocable actions. **Targets Tableau Next on Salesforce** (the Salesforce-native analytics product) — NOT Tableau Cloud. No JWT, no REST callouts. Requires Tableau Next + Agentforce.
@@ -17,7 +17,7 @@ Packaged two ways for shareability per edition:
 
 ## Architecture
 
-4-layer Apex: **LWC → Controller → Service → DAO**. Full detail in [Documents/ARCHITECTURE.md](Documents/ARCHITECTURE.md).
+4-layer Apex: **LWC → Controller → Service → DAO**. Full detail in [Documents/Architect/architecture.md](Documents/Architect/architecture.md).
 
 - `AiInsightsController` — `@AuraEnabled(cacheable=true)` for all dashboard reads + `runExplorerQuery` for dynamic pivots
 - `AiInsightsService` — business logic, aggregation, sorting (since DMO SOQL cannot ORDER BY aggregates)
@@ -25,15 +25,15 @@ Packaged two ways for shareability per edition:
 - `UserResolverService` — User/Prompt name resolution with Platform Cache + graceful degradation
 - `AiInsightsDateRange` LMS channel — one publisher (date filter), N subscribers (dashboards)
 - `CostCalculatorService` — tier-based Flex Credit estimator with **Wallet-first override**: when `Enable_Wallet_Costs__c` is on AND `AiWalletDAO.isWalletAvailable()` returns true (Wallet-enabled prod org with Consumption Tagging app installed), `costForWindow()` returns Wallet actuals tagged `confidence=ACTUAL` / `source=ACTUAL_WALLET`. Otherwise falls back to the tier-rate estimate. Confidence/source are surfaced to the UI as visible badges (`ACTUAL` / `HIGH` / `ESTIMATED` / `FALLBACK` / `NOT_COSTED`). Verified end-to-end against `cvk-dev` 2026-05-15.
-- `AiWalletDAO` (+ `IAiWalletDAO` + `AiWalletDAOMock`) — isolates `TenantEnrichedUsageEvent__dll` queries. Defends every method with try/catch + a transaction-scoped availability cache so non-Wallet orgs never throw. Schema reference in [Documents/WALLET-LIVE-SCHEMA.md](Documents/WALLET-LIVE-SCHEMA.md).
+- `AiWalletDAO` (+ `IAiWalletDAO` + `AiWalletDAOMock`) — isolates `TenantEnrichedUsageEvent__dll` queries. Defends every method with try/catch + a transaction-scoped availability cache so non-Wallet orgs never throw. Schema reference in [Documents/Developer/wallet-live-schema.md](Documents/Developer/wallet-live-schema.md).
 
 ## Key Design Docs (read before coding)
 
-- **[Documents/LIVE-SCHEMA.md](Documents/LIVE-SCHEMA.md)** — verified DMO schema from `cvk-dev`. **This overrides DATA-MODEL.md where they disagree.** Live schema uses camelCase fields (`userId__c`, `timestamp__c`), and prompt template names are directly on the Request row (no tag join needed).
-- **[Documents/WALLET-LIVE-SCHEMA.md](Documents/WALLET-LIVE-SCHEMA.md)** — verified Digital Wallet (`TenantEnrichedUsageEvent__dll`) schema. DLO suffix is `__dll` (not `__dlm`); field names are lowercase + `__c` (not camelCase like the GenAI DMOs).
-- [Documents/APEX-SERVICES.md](Documents/APEX-SERVICES.md) — class structure, method signatures, DTOs
-- [Documents/COMPONENTS.md](Documents/COMPONENTS.md) — LWC specifications, layout, behavior
-- [Documents/DEPLOYMENT.md](Documents/DEPLOYMENT.md) — project structure, what ships in the package
+- **[Documents/Developer/live-schema.md](Documents/Developer/live-schema.md)** — verified DMO schema from `cvk-dev`. **This overrides Architect/data-model.md where they disagree.** Live schema uses camelCase fields (`userId__c`, `timestamp__c`), and prompt template names are directly on the Request row (no tag join needed).
+- **[Documents/Developer/wallet-live-schema.md](Documents/Developer/wallet-live-schema.md)** — verified Digital Wallet (`TenantEnrichedUsageEvent__dll`) schema. DLO suffix is `__dll` (not `__dlm`); field names are lowercase + `__c` (not camelCase like the GenAI DMOs).
+- [Documents/Developer/apex-services.md](Documents/Developer/apex-services.md) — class structure, method signatures, DTOs
+- [Documents/Developer/components.md](Documents/Developer/components.md) — LWC specifications, layout, behavior
+- [Documents/Developer/release.md](Documents/Developer/release.md) — 2GP packaging, release runbook, install-URL discipline
 
 ## Coding Standards
 
@@ -128,6 +128,17 @@ Invoke with `Skill` tool by exact name. These are authoritative for their domain
 
 ## Execution Plan
 
-See [/Users/cmassing/.claude/plans/read-all-docs-in-witty-stearns.md](/.claude/plans/read-all-docs-in-witty-stearns.md) for the approved 6-phase plan.
+See [/Users/cmassing/.claude/plans/read-all-docs-in-witty-stearns.md](/.claude/plans/read-all-docs-in-witty-stearns.md) for the original 6-phase plan and [/Users/cmassing/.claude/plans/create-a-plan-for-snug-wreath.md](/.claude/plans/create-a-plan-for-snug-wreath.md) for the Tableau Next installer plan.
 
-Current phase: **Phase 0 — scaffolding complete, moving to Phase 1 (Apex data layer) using `sf-apex` + `sf-soql` + `sf-datacloud-retrieve` skills.**
+Current phase: **Tableau Next installer landed.** `make install-tableau TARGET_ORG=<alias>` orchestrates prereq checks → Lightning deploy → semantic-model publish (SSOT REST) → Tableau deploy → permset assignment → agent publish → smoke tests. Idempotent; safe to re-run. Manual one-time prep: author the `FluentMetric_AI` semantic model + 4 dashboards in `cvk-dev`, export semantic model JSON via `tableau-dx`, retrieve dashboards as Metadata API artifacts. See [Documents/Architect/tableau-edition.md](Documents/Architect/tableau-edition.md) §Authoring artifacts.
+
+## Tableau Next installer — file map
+
+- `Makefile` (repo root) — all targets, `make help` lists them
+- `scripts/install-tableau-next.sh` — 7-step orchestrator
+- `scripts/check-prereqs.sh` — provisioning gate (CustomApplication / sObjects / PSL)
+- `scripts/publish-semantic-model.sh` — idempotent POST/PUT to `/ssot/semantic/models/FluentMetric_AI`
+- `scripts/publish-agent.sh` — `sf agent publish` wrapper, treats "already published" as success, prints activation URL
+- `scripts/verify-tableau.sh` + `scripts/verify-actions.apex` — 4 smoke checks
+- `force-app-tableau/src-non-mdapi/semanticModels/FluentMetric_AI/` — out-of-band JSON tree (not Metadata API; managed by `publish-semantic-model.sh`)
+- `force-app-tableau/main/default/analyticsDashboards/` + `analyticsVisualizations/` — Metadata API artifacts deployed via `sf project deploy`

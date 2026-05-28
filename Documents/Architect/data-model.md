@@ -1,5 +1,7 @@
 # DATA-MODEL.md — DMO Schema Reference & Query Patterns
 
+> ⚠️ **`live-schema.md` is authoritative.** This document captures the original design intent and query patterns. Verified field names from `cvk-dev` live at [../Developer/live-schema.md](../Developer/live-schema.md). Where this file uses PascalCase fields like `UserId__c` or `CreatedDate__c`, the live schema uses camelCase (`userId__c`, `timestamp__c`). Trust the live schema for query authoring; trust this doc for design rationale.
+
 ## Naming Conventions
 
 Data Cloud DMOs follow specific naming rules:
