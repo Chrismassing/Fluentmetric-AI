@@ -12,12 +12,19 @@
       "default": false,
       "package": "FluentMetric AI for Tableau",
       "versionName": "Version 1.0",
-      "versionNumber": "1.0.0.NEXT"
+      "versionNumber": "1.0.0.NEXT",
+      "dependencies": [
+        { "package": "FluentMetric AI@LATEST" }
+      ]
     }
   ],
+  "packageAliases": {
+    "FluentMetric AI": "0Ho_PLACEHOLDER_LIGHTNING_PACKAGE_ID",
+    "FluentMetric AI for Tableau": "0Ho_PLACEHOLDER_TABLEAU_PACKAGE_ID"
+  },
   "name": "fluentmetric-ai",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "62.0",
-  "__comment": "Two editions: force-app (default, Lightning) and force-app-tableau (Tableau Next, depends on Lightning's AiInsightsService). To publish the Tableau Analyst agent, temporarily flip default:true onto force-app-tableau, run `sf agent publish authoring-bundle`, then flip back."
+  "__comment": "Two editions: force-app (default, Lightning) and force-app-tableau (Tableau Next, depends on Lightning's AiInsightsService). The Tableau package's `dependencies` block ensures 2GP installs the Lightning edition automatically when admins use the Tableau install URL. The packageAliases above are placeholders until DevHub `cvk-dev` runs `sf package create` for both packages — see Documents/Developer/release.md."
 }
