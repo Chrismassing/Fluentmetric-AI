@@ -237,4 +237,89 @@ public class AiInsightsDAOMock implements IAiInsightsDAO {
     public Integer getDistinctUserCountInWindow(DateTime startDate, DateTime endDate) {
         return distinctUserCountInWindowToReturn == null ? 0 : distinctUserCountInWindowToReturn;
     }
+
+    // ── Service-side DMO query absorbers (v1.0.1) ──────────────────────────
+    public List<AggregateResult> aggregatesByPromptAndFeatureToReturn = new List<AggregateResult>();
+    public List<SObject> contentCategoriesByDateToReturn = new List<SObject>();
+    public List<SObject> recentToxicQualityToReturn = new List<SObject>();
+    public Map<String, List<SObject>> generationsByIdsToReturn = new Map<String, List<SObject>>();
+    public Map<String, List<SObject>> responsesByIdsToReturn = new Map<String, List<SObject>>();
+    public Map<String, List<SObject>> requestsByGatewayIdsToReturn = new Map<String, List<SObject>>();
+    public List<SObject> generationsByIdsDefault = new List<SObject>();
+    public List<SObject> responsesByIdsDefault = new List<SObject>();
+    public List<SObject> requestsByGatewayIdsDefault = new List<SObject>();
+    public Map<String, List<AggregateResult>> explorerAggregatesByGroupField = new Map<String, List<AggregateResult>>();
+    public List<AggregateResult> toxicFlagsByFeatureToReturn = new List<AggregateResult>();
+
+    public List<AggregateResult> getRequestAggregatesByPromptAndFeature(DateTime startDate, DateTime endDate) {
+        return aggregatesByPromptAndFeatureToReturn;
+    }
+
+    public List<SObject> getContentCategoriesByDate(DateTime startDate, DateTime endDate) {
+        return contentCategoriesByDateToReturn;
+    }
+
+    public List<SObject> getRecentToxicQuality(DateTime startDate, DateTime endDate, Integer rowLimit) {
+        return recentToxicQualityToReturn;
+    }
+
+    public List<SObject> getGenerationsByIds(Set<String> genIds) {
+        if (generationsByIdsToReturn != null && !generationsByIdsToReturn.isEmpty() && genIds != null) {
+            List<SObject> matched = new List<SObject>();
+            for (String gid : genIds) {
+                List<SObject> rows = generationsByIdsToReturn.get(gid);
+                if (rows != null) {
+                    matched.addAll(rows);
+                }
+            }
+            if (!matched.isEmpty()) {
+                return matched;
+            }
+        }
+        return generationsByIdsDefault;
+    }
+
+    public List<SObject> getResponsesByIds(Set<String> responseIds) {
+        if (responsesByIdsToReturn != null && !responsesByIdsToReturn.isEmpty() && responseIds != null) {
+            List<SObject> matched = new List<SObject>();
+            for (String rid : responseIds) {
+                List<SObject> rows = responsesByIdsToReturn.get(rid);
+                if (rows != null) {
+                    matched.addAll(rows);
+                }
+            }
+            if (!matched.isEmpty()) {
+                return matched;
+            }
+        }
+        return responsesByIdsDefault;
+    }
+
+    public List<SObject> getRequestsByGatewayIds(Set<String> requestIds) {
+        if (requestsByGatewayIdsToReturn != null && !requestsByGatewayIdsToReturn.isEmpty() && requestIds != null) {
+            List<SObject> matched = new List<SObject>();
+            for (String rid : requestIds) {
+                List<SObject> rows = requestsByGatewayIdsToReturn.get(rid);
+                if (rows != null) {
+                    matched.addAll(rows);
+                }
+            }
+            if (!matched.isEmpty()) {
+                return matched;
+            }
+        }
+        return requestsByGatewayIdsDefault;
+    }
+
+    public List<AggregateResult> getExplorerAggregates(FilterCriteria criteria, String groupField) {
+        if (explorerAggregatesByGroupField == null) {
+            return new List<AggregateResult>();
+        }
+        List<AggregateResult> rows = explorerAggregatesByGroupField.get(groupField);
+        return rows == null ? new List<AggregateResult>() : rows;
+    }
+
+    public List<AggregateResult> getToxicFlagsByFeature(DateTime startDate, DateTime endDate) {
+        return toxicFlagsByFeatureToReturn;
+    }
 }

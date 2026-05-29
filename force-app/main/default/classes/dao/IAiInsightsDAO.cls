@@ -212,4 +212,74 @@ public interface IAiInsightsDAO {
      * (e.g. eventually a DateRange wrapper) without breaking existing usage.
      */
     Integer getDistinctUserCountInWindow(DateTime startDate, DateTime endDate);
+
+    // ── Service-side DMO query absorbers (v1.0.1) ──────────────────────────
+    // These methods exist purely to push every `Database.queryWithBinds` call
+    // out of `AiInsightsService` and into the DAO. The reason is testability:
+    // DMO data isn't seedable in Apex test context, so service code that
+    // queries DMOs directly is structurally unreachable from unit tests. By
+    // routing every DMO read through the DAO, the mock can stub them and the
+    // service paths become coverable.
+
+    /**
+     * Two-dimensional aggregate keyed by `promptTemplateDevName__c` AND
+     * `feature__c`. Powers per-prompt feature attribution in
+     * `AiInsightsService.getUsageByPrompt`: when a prompt maps to exactly one
+     * non-blank feature, that feature is carried as the prompt's
+     * featureName. Aliases: `pdn`, `feat`, `cnt`.
+     */
+    List<AggregateResult> getRequestAggregatesByPromptAndFeature(DateTime startDate, DateTime endDate);
+
+    /**
+     * Direct content-category fetch by Quality DMO timestamp (not joined to
+     * generations). Used by the safety-tab category histogram. Bounded at
+     * 50k rows; volume is small because only flagged rows are scored.
+     */
+    List<SObject> getContentCategoriesByDate(DateTime startDate, DateTime endDate);
+
+    /**
+     * Most-recent N rows from `GenAIContentQuality__dlm` where
+     * `isToxicityDetected__c = 'true'`. Drives the safety dashboard's
+     * "recent flagged outputs" panel. Caller hydrates linked Generation /
+     * Response / Request rows separately via the by-id helpers below.
+     */
+    List<SObject> getRecentToxicQuality(DateTime startDate, DateTime endDate, Integer rowLimit);
+
+    /**
+     * Bounded fetch of `GenAIGeneration__dlm` rows by their business-key
+     * `generationId__c`. Used during flagged-output hydration. Capped at
+     * 1000 — caller caps input set size upstream.
+     */
+    List<SObject> getGenerationsByIds(Set<String> genIds);
+
+    /**
+     * Bounded fetch of `GenAIGatewayResponse__dlm` rows by
+     * `generationResponseId__c`. Used during flagged-output hydration.
+     * Capped at 1000.
+     */
+    List<SObject> getResponsesByIds(Set<String> responseIds);
+
+    /**
+     * Bounded fetch of `GenAIGatewayRequest__dlm` rows by their
+     * business-key `gatewayRequestId__c`. Used during flagged-output
+     * hydration. Capped at 1000.
+     */
+    List<SObject> getRequestsByGatewayIds(Set<String> requestIds);
+
+    /**
+     * Explorer pivot — runs `SELECT <groupField> gkey, COUNT(Id) cnt,
+     * SUM(totalTokens__c) tt FROM GenAIGatewayRequest__dlm WHERE
+     * <FilterCriteria> GROUP BY <groupField>`. `groupField` is a
+     * service-supplied safe constant from the four allowed dimensions
+     * (`userId__c`, `promptTemplateDevName__c`, `model__c`, `feature__c`),
+     * never raw user input.
+     */
+    List<AggregateResult> getExplorerAggregates(FilterCriteria criteria, String groupField);
+
+    /**
+     * Per-feature toxic flag count from `GenAIContentQuality__dlm`. Used by
+     * the Explorer's `ToxicFlagCount` metric when grouped by feature.
+     * Aliases: `gkey` (feature__c), `cnt`.
+     */
+    List<AggregateResult> getToxicFlagsByFeature(DateTime startDate, DateTime endDate);
 }

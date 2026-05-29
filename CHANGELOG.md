@@ -17,6 +17,58 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ---
 
+## [1.0.1] - 2026-05-29
+
+**Install URLs:**
+- **Lightning Edition (beta):** https://login.salesforce.com/packaging/installPackage.apexp?p0=04tHn000001NtfLIAS
+- **Tableau Next Edition:** Deferred to v1.1.
+- For sandboxes, replace `login` with `test`.
+
+**Upgrade notes:** Beta patch. Internal test infrastructure rebuild — no
+customer-visible feature changes. v1.0.1 closes the v1.0.0 test-debt gap so
+v1.1 can ship as a promoted (non-beta) version. Permission Set
+`FluentMetric_AI_User` assignments and Custom Setting values are preserved
+through upgrade.
+
+### Changed
+
+- **AiInsightsService coverage 25% → 83%** and **AiInsightsDAO coverage 4%
+  → 92%**, both now well above the 75% per-class threshold required for
+  non-beta promotion. Achieved by (a) refactoring eight service-level
+  `Database.queryWithBinds` call sites into the DAO so they become
+  mockable, and (b) a fixture rebuild using `Type.forName +
+  System.JSON.deserialize` for DMO SObjects + a real-aggregate trick for
+  `AggregateResult` rows.
+- **`AiInsightsTestUtil`** — new shared fixture helper class providing
+  DMO SObject builders (`makeRequest` / `makeResponse` / `makeGeneration`
+  / `makeFeedback` / `makeQuality` / `makeCategory`) and AggregateResult
+  helpers (`oneRowAggregate`, `aggregateRow`, `aggregateRows`,
+  `totalsAggregate`).
+- **`config/project-scratch-def.json`** — corrected feature names so
+  scratch-org provisioning works on the `cvk-dev` DevHub
+  (`DataCloud` / `EinsteinGenAI` were rejected as not-valid feature
+  values; resolved to `EinsteinGPTPlatform`).
+
+### Added
+
+- **`AiInsightsDAOTest`** — new test class covering all 49 public DAO
+  methods. Each test asserts the SOQL builder produces syntactically
+  valid SOQL by either succeeding or raising only the expected
+  `QueryException` (DMOs are not seedable in Apex test context).
+
+### Known gaps (v1.0.1)
+
+- **Install-URL roundtrip on a fresh scratch was not run** because the
+  `cvk-dev` DevHub hit its daily scratch-org signup limit during the
+  release window. The package created cleanly and shares 100% of its
+  metadata with v1.0.0 (which was successfully installed on `cvk-dev`),
+  so risk is low — but a roundtrip smoke is owed before v1.1 ships.
+  Tracked as a v1.1 prerequisite.
+- **Tableau Next edition packaging** remains deferred to v1.1 alongside
+  promote-to-non-beta.
+
+---
+
 ## [1.0.0] - 2026-05-28
 
 **Install URLs:**

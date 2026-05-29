@@ -4,8 +4,8 @@
       "path": "force-app",
       "default": true,
       "package": "FluentMetric AI",
-      "versionName": "Version 1.0",
-      "versionNumber": "1.0.0.NEXT",
+      "versionName": "Version 1.0.1",
+      "versionNumber": "1.0.1.NEXT",
       "versionDescription": "Einstein GenAI Audit & Feedback dashboards"
     },
     {
@@ -24,7 +24,8 @@
   "packageAliases": {
     "FluentMetric AI": "0HoHn0000010xBpKAI",
     "FluentMetric AI for Tableau": "0Ho_PLACEHOLDER_TABLEAU_PACKAGE_ID",
-    "FluentMetric AI@1.0.0-1": "04tHn000001NtfGIAS"
+    "FluentMetric AI@1.0.0-1": "04tHn000001NtfGIAS",
+    "FluentMetric AI@1.0.1-1": "04tHn000001NtfLIAS"
   },
   "name": "fluentmetric-ai",
   "namespace": "",

@@ -2,8 +2,10 @@
   "orgName": "FluentMetric AI Validation",
   "edition": "Enterprise",
   "features": [
-    "DataCloud",
-    "EinsteinGenAI"
+    "API",
+    "Communities",
+    "Sites",
+    "EinsteinGPTPlatform"
   ],
   "settings": {
     "lightningExperienceSettings": {

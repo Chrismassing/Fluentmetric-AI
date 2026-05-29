@@ -95,7 +95,7 @@ public with sharing virtual class AiInsightsService {
 
         // Toxic flag count — use the Quality DMO's own timestamp rather than joining from requests.
         // Volume is typically tiny (only flagged rows get scored).
-        out.toxicFlagCount = countToxicFlagsInRange(filter.startDate, filter.endDate);
+        out.toxicFlagCount = dao.countToxicFlagsByDateRange(filter.startDate, filter.endDate);
 
         // Highlights — who's winning, what's hot. All failure paths are
         // isolated so the main KPI strip still renders even if one highlight
@@ -531,25 +531,6 @@ public with sharing virtual class AiInsightsService {
         }
     }
 
-    @TestVisible
-    private Integer countToxicFlagsInRange(DateTime startDate, DateTime endDate) {
-        try {
-            String soql =
-                'SELECT COUNT(Id) cnt ' +
-                'FROM GenAIContentQuality__dlm ' +
-                'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
-                'AND isToxicityDetected__c = \'true\'';
-            List<AggregateResult> rows = (List<AggregateResult>) Database.queryWithBinds(
-                soql,
-                new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
-                AccessLevel.USER_MODE
-            );
-            return rows.isEmpty() ? 0 : toInteger(rows[0].get('cnt'));
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
     // ───────────────────────── Usage by User ─────────────────────
 
     public virtual List<UserUsageDTO> getUsageByUser(DateRangeFilter filter) {
@@ -814,14 +795,9 @@ public with sharing virtual class AiInsightsService {
         // Best-effort feature attribution per prompt: if a prompt has exactly one
         // feature, carry it and use it for best-effort feedback correlation.
         try {
-            List<AggregateResult> featureAggs = (List<AggregateResult>) Database.queryWithBinds(
-                'SELECT promptTemplateDevName__c pdn, feature__c feat, COUNT(Id) cnt ' +
-                    'FROM GenAIGatewayRequest__dlm ' +
-                    'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
-                    'AND promptTemplateDevName__c != null ' +
-                    'GROUP BY promptTemplateDevName__c, feature__c',
-                new Map<String, Object>{ 'startDate' => filter.startDate, 'endDate' => filter.endDate },
-                AccessLevel.USER_MODE
+            List<AggregateResult> featureAggs = dao.getRequestAggregatesByPromptAndFeature(
+                filter.startDate,
+                filter.endDate
             );
             Map<String, Set<String>> featuresByPrompt = new Map<String, Set<String>>();
             for (AggregateResult a : featureAggs) {
@@ -1869,7 +1845,7 @@ public with sharing virtual class AiInsightsService {
 
         // Category score aggregation — see method JavaDoc Compromises note.
         try {
-            List<SObject> categories = queryContentCategoriesByDate(filter.startDate, filter.endDate);
+            List<SObject> categories = dao.getContentCategoriesByDate(filter.startDate, filter.endDate);
             Map<String, List<Decimal>> scoresByCategory = new Map<String, List<Decimal>>();
             Map<String, Integer> flaggedByCategory = new Map<String, Integer>();
             for (SObject c : categories) {
@@ -1908,7 +1884,7 @@ public with sharing virtual class AiInsightsService {
         // Recent flagged outputs — bounded Quality query + per-row hydration
         if (toxic > 0) {
             try {
-                List<SObject> recentToxicQuality = queryRecentToxicQuality(
+                List<SObject> recentToxicQuality = dao.getRecentToxicQuality(
                     filter.startDate,
                     filter.endDate,
                     TOP_N_DEFAULT
@@ -1922,53 +1898,6 @@ public with sharing virtual class AiInsightsService {
         }
 
         return out;
-    }
-
-    /**
-     * Fetch content-category rows filtered by their own timestamp. Bounded by
-     * the DAO-style LIMIT 50000 — volume here is typically much smaller than
-     * Request volume because only a fraction of generations get safety-scored.
-     */
-    @TestVisible
-    private List<SObject> queryContentCategoriesByDate(DateTime startDate, DateTime endDate) {
-        String soql =
-            'SELECT Id, id__c, parent__c, category__c, value__c, detectorType__c, timestamp__c ' +
-            'FROM GenAIContentCategory__dlm ' +
-            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
-            'LIMIT 50000';
-        try {
-            return Database.queryWithBinds(
-                soql,
-                new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
-                AccessLevel.USER_MODE
-            );
-        } catch (Exception e) {
-            return new List<SObject>();
-        }
-    }
-
-    /**
-     * Return the N most recent toxic Quality rows in range. Used as the seed
-     * for hydrating recent flagged outputs — bounded and fast.
-     */
-    @TestVisible
-    private List<SObject> queryRecentToxicQuality(DateTime startDate, DateTime endDate, Integer rowLimit) {
-        String soql =
-            'SELECT Id, id__c, parent__c, isToxicityDetected__c, contentType__c, feature__c, timestamp__c ' +
-            'FROM GenAIContentQuality__dlm ' +
-            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
-            'AND isToxicityDetected__c = \'true\' ' +
-            'ORDER BY timestamp__c DESC ' +
-            'LIMIT :rowLimit';
-        try {
-            return Database.queryWithBinds(
-                soql,
-                new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate, 'rowLimit' => rowLimit },
-                AccessLevel.USER_MODE
-            );
-        } catch (Exception e) {
-            return new List<SObject>();
-        }
     }
 
     /**
@@ -1991,7 +1920,7 @@ public with sharing virtual class AiInsightsService {
         }
 
         // Fetch generations by business key
-        List<SObject> generations = queryGenerationsByIds(genIds);
+        List<SObject> generations = dao.getGenerationsByIds(genIds);
         Map<String, SObject> generationByKey = new Map<String, SObject>();
         Set<String> responseIds = new Set<String>();
         for (SObject g : generations) {
@@ -2009,7 +1938,7 @@ public with sharing virtual class AiInsightsService {
         Map<String, String> responseToRequest = new Map<String, String>();
         Set<String> requestIds = new Set<String>();
         if (!responseIds.isEmpty()) {
-            for (SObject resp : queryResponsesByIds(responseIds)) {
+            for (SObject resp : dao.getResponsesByIds(responseIds)) {
                 String respId = (String) resp.get('generationResponseId__c');
                 String reqId = (String) resp.get('generationRequestId__c');
                 if (String.isNotBlank(respId) && String.isNotBlank(reqId)) {
@@ -2023,7 +1952,7 @@ public with sharing virtual class AiInsightsService {
         Map<String, SObject> requestByKey = new Map<String, SObject>();
         Set<String> userIds = new Set<String>();
         if (!requestIds.isEmpty()) {
-            for (SObject req : queryRequestsByKeys(requestIds)) {
+            for (SObject req : dao.getRequestsByGatewayIds(requestIds)) {
                 String rid = (String) req.get('gatewayRequestId__c');
                 if (String.isNotBlank(rid)) {
                     requestByKey.put(rid, req);
@@ -2071,67 +2000,6 @@ public with sharing virtual class AiInsightsService {
         }
         outputs.sort(new PromptOutputByDateDesc());
         return outputs;
-    }
-
-    @TestVisible
-    private List<SObject> queryGenerationsByIds(Set<String> genIds) {
-        if (genIds == null || genIds.isEmpty()) {
-            return new List<SObject>();
-        }
-        String soql =
-            'SELECT Id, generationId__c, generationResponseId__c, responseText__c, ' +
-            'maskedResponseText__c, feature__c, timestamp__c ' +
-            'FROM GenAIGeneration__dlm ' +
-            'WHERE generationId__c IN :genIds ' +
-            'LIMIT 1000';
-        try {
-            return Database.queryWithBinds(soql, new Map<String, Object>{ 'genIds' => genIds }, AccessLevel.USER_MODE);
-        } catch (Exception e) {
-            return new List<SObject>();
-        }
-    }
-
-    @TestVisible
-    private List<SObject> queryResponsesByIds(Set<String> responseIds) {
-        if (responseIds == null || responseIds.isEmpty()) {
-            return new List<SObject>();
-        }
-        String soql =
-            'SELECT Id, generationRequestId__c, generationResponseId__c, timestamp__c ' +
-            'FROM GenAIGatewayResponse__dlm ' +
-            'WHERE generationResponseId__c IN :responseIds ' +
-            'LIMIT 1000';
-        try {
-            return Database.queryWithBinds(
-                soql,
-                new Map<String, Object>{ 'responseIds' => responseIds },
-                AccessLevel.USER_MODE
-            );
-        } catch (Exception e) {
-            return new List<SObject>();
-        }
-    }
-
-    @TestVisible
-    private List<SObject> queryRequestsByKeys(Set<String> requestIds) {
-        if (requestIds == null || requestIds.isEmpty()) {
-            return new List<SObject>();
-        }
-        String soql =
-            'SELECT Id, gatewayRequestId__c, userId__c, prompt__c, model__c, feature__c, ' +
-            'promptTemplateDevName__c, timestamp__c, promptTokens__c, completionTokens__c, totalTokens__c ' +
-            'FROM GenAIGatewayRequest__dlm ' +
-            'WHERE gatewayRequestId__c IN :requestIds ' +
-            'LIMIT 1000';
-        try {
-            return Database.queryWithBinds(
-                soql,
-                new Map<String, Object>{ 'requestIds' => requestIds },
-                AccessLevel.USER_MODE
-            );
-        } catch (Exception e) {
-            return new List<SObject>();
-        }
     }
 
     // ───────────────────────── Explorer Pivot ────────────────────
@@ -2258,24 +2126,10 @@ public with sharing virtual class AiInsightsService {
         // WHERE + binds come from FilterQueryBuilder — every dimension filter
         // (userIds, promptTemplateDevNames, models, providers, features,
         // appTypes) rides in as an `IN :bind` with a Set<String>. No caller
-        // value ever touches the SOQL string.
-        FilterQueryBuilder.Result qr = FilterQueryBuilder.build(criteria);
-        String soql =
-            'SELECT ' +
-            groupField +
-            ' gkey, ' +
-            'COUNT(Id) cnt, ' +
-            'SUM(totalTokens__c) tt ' +
-            'FROM GenAIGatewayRequest__dlm ' +
-            'WHERE ' +
-            qr.whereClause +
-            ' GROUP BY ' +
-            groupField;
-
-        List<AggregateResult> aggs;
-        try {
-            aggs = (List<AggregateResult>) Database.queryWithBinds(soql, qr.binds, AccessLevel.USER_MODE);
-        } catch (Exception e) {
+        // value ever touches the SOQL string. Delegated to DAO so the path
+        // is mockable from tests (DMO data isn't seedable in test context).
+        List<AggregateResult> aggs = dao.getExplorerAggregates(criteria, groupField);
+        if (aggs == null) {
             return new Map<String, ExplorerResultDTO>();
         }
 
@@ -2408,17 +2262,7 @@ public with sharing virtual class AiInsightsService {
         // ToxicFlagCount — supported on Feature grouping via feature__c on Quality DMO
         if (metric == 'ToxicFlagCount' && normalizedGroupBy == 'feature') {
             try {
-                String qSoql =
-                    'SELECT feature__c gkey, COUNT(Id) cnt ' +
-                    'FROM GenAIContentQuality__dlm ' +
-                    'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
-                    'AND isToxicityDetected__c = \'true\' ' +
-                    'GROUP BY feature__c';
-                List<AggregateResult> qAggs = (List<AggregateResult>) Database.queryWithBinds(
-                    qSoql,
-                    new Map<String, Object>{ 'startDate' => criteria.startDate, 'endDate' => criteria.endDate },
-                    AccessLevel.USER_MODE
-                );
+                List<AggregateResult> qAggs = dao.getToxicFlagsByFeature(criteria.startDate, criteria.endDate);
                 for (AggregateResult a : qAggs) {
                     String feat = (String) a.get('gkey');
                     if (feat != null && perGroup.containsKey(feat)) {

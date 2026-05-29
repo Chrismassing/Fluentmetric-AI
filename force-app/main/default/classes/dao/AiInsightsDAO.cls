@@ -905,4 +905,159 @@ public with sharing class AiInsightsDAO implements IAiInsightsDAO {
         );
         return rows.size();
     }
+
+    // ── Service-side DMO query absorbers (v1.0.1) ──────────────────────────
+
+    public List<AggregateResult> getRequestAggregatesByPromptAndFeature(DateTime startDate, DateTime endDate) {
+        String soql =
+            'SELECT promptTemplateDevName__c pdn, feature__c feat, COUNT(Id) cnt ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'AND promptTemplateDevName__c != null ' +
+            'GROUP BY promptTemplateDevName__c, feature__c';
+        try {
+            return (List<AggregateResult>) Database.queryWithBinds(
+                soql,
+                new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
+                AccessLevel.USER_MODE
+            );
+        } catch (Exception e) {
+            return new List<AggregateResult>();
+        }
+    }
+
+    public List<SObject> getContentCategoriesByDate(DateTime startDate, DateTime endDate) {
+        String soql =
+            'SELECT Id, id__c, parent__c, category__c, value__c, detectorType__c, timestamp__c ' +
+            'FROM GenAIContentCategory__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'LIMIT 50000';
+        try {
+            return Database.queryWithBinds(
+                soql,
+                new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
+                AccessLevel.USER_MODE
+            );
+        } catch (Exception e) {
+            return new List<SObject>();
+        }
+    }
+
+    public List<SObject> getRecentToxicQuality(DateTime startDate, DateTime endDate, Integer rowLimit) {
+        Integer effectiveLimit = rowLimit == null || rowLimit <= 0 ? 50 : rowLimit;
+        String soql =
+            'SELECT Id, id__c, parent__c, isToxicityDetected__c, contentType__c, feature__c, timestamp__c ' +
+            'FROM GenAIContentQuality__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'AND isToxicityDetected__c = \'true\' ' +
+            'ORDER BY timestamp__c DESC ' +
+            'LIMIT :effectiveLimit';
+        try {
+            return Database.queryWithBinds(
+                soql,
+                new Map<String, Object>{
+                    'startDate' => startDate,
+                    'endDate' => endDate,
+                    'effectiveLimit' => effectiveLimit
+                },
+                AccessLevel.USER_MODE
+            );
+        } catch (Exception e) {
+            return new List<SObject>();
+        }
+    }
+
+    public List<SObject> getGenerationsByIds(Set<String> genIds) {
+        if (genIds == null || genIds.isEmpty()) {
+            return new List<SObject>();
+        }
+        String soql =
+            'SELECT Id, generationId__c, generationResponseId__c, responseText__c, ' +
+            'maskedResponseText__c, feature__c, timestamp__c ' +
+            'FROM GenAIGeneration__dlm ' +
+            'WHERE generationId__c IN :genIds ' +
+            'LIMIT 1000';
+        try {
+            return Database.queryWithBinds(soql, new Map<String, Object>{ 'genIds' => genIds }, AccessLevel.USER_MODE);
+        } catch (Exception e) {
+            return new List<SObject>();
+        }
+    }
+
+    public List<SObject> getResponsesByIds(Set<String> responseIds) {
+        if (responseIds == null || responseIds.isEmpty()) {
+            return new List<SObject>();
+        }
+        String soql =
+            'SELECT Id, generationRequestId__c, generationResponseId__c, timestamp__c ' +
+            'FROM GenAIGatewayResponse__dlm ' +
+            'WHERE generationResponseId__c IN :responseIds ' +
+            'LIMIT 1000';
+        try {
+            return Database.queryWithBinds(
+                soql,
+                new Map<String, Object>{ 'responseIds' => responseIds },
+                AccessLevel.USER_MODE
+            );
+        } catch (Exception e) {
+            return new List<SObject>();
+        }
+    }
+
+    public List<SObject> getRequestsByGatewayIds(Set<String> requestIds) {
+        if (requestIds == null || requestIds.isEmpty()) {
+            return new List<SObject>();
+        }
+        String soql =
+            'SELECT Id, gatewayRequestId__c, userId__c, prompt__c, model__c, feature__c, ' +
+            'promptTemplateDevName__c, timestamp__c, promptTokens__c, completionTokens__c, totalTokens__c ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE gatewayRequestId__c IN :requestIds ' +
+            'LIMIT 1000';
+        try {
+            return Database.queryWithBinds(
+                soql,
+                new Map<String, Object>{ 'requestIds' => requestIds },
+                AccessLevel.USER_MODE
+            );
+        } catch (Exception e) {
+            return new List<SObject>();
+        }
+    }
+
+    public List<AggregateResult> getExplorerAggregates(FilterCriteria criteria, String groupField) {
+        FilterQueryBuilder.Result fq = FilterQueryBuilder.build(criteria);
+        String soql =
+            'SELECT ' +
+            groupField +
+            ' gkey, COUNT(Id) cnt, SUM(totalTokens__c) tt ' +
+            'FROM GenAIGatewayRequest__dlm ' +
+            'WHERE ' +
+            fq.whereClause +
+            ' GROUP BY ' +
+            groupField;
+        try {
+            return (List<AggregateResult>) Database.queryWithBinds(soql, fq.binds, AccessLevel.USER_MODE);
+        } catch (Exception e) {
+            return new List<AggregateResult>();
+        }
+    }
+
+    public List<AggregateResult> getToxicFlagsByFeature(DateTime startDate, DateTime endDate) {
+        String soql =
+            'SELECT feature__c gkey, COUNT(Id) cnt ' +
+            'FROM GenAIContentQuality__dlm ' +
+            'WHERE timestamp__c >= :startDate AND timestamp__c <= :endDate ' +
+            'AND isToxicityDetected__c = \'true\' ' +
+            'GROUP BY feature__c';
+        try {
+            return (List<AggregateResult>) Database.queryWithBinds(
+                soql,
+                new Map<String, Object>{ 'startDate' => startDate, 'endDate' => endDate },
+                AccessLevel.USER_MODE
+            );
+        } catch (Exception e) {
+            return new List<AggregateResult>();
+        }
+    }
 }
