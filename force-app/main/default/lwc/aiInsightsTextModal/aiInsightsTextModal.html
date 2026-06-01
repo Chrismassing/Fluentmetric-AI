@@ -56,22 +56,6 @@
                                 title={tooltips.copy}
                                 onclick={handleCopy}>
                             </lightning-button>
-                            <lightning-button
-                                class="slds-m-left_x-small"
-                                variant="neutral"
-                                label="Open in new tab"
-                                icon-name="utility:new_window"
-                                title={tooltips.openInNewWindow}
-                                onclick={handleOpenInNewWindow}>
-                            </lightning-button>
-                            <lightning-button
-                                class="slds-m-left_x-small"
-                                variant="neutral"
-                                label="Download"
-                                icon-name="utility:download"
-                                title="Download as an .html file — useful if the new-tab button is blocked by your browser's popup settings"
-                                onclick={handleDownloadHtml}>
-                            </lightning-button>
                             <template lwc:if={hasCopyFeedback}>
                                 <span class={copyFeedbackClass} role="status">{copyFeedback}</span>
                             </template>

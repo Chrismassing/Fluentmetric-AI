@@ -298,13 +298,11 @@ export const TOOLTIPS = {
     // ─── Full-text modal (expand) ────────────────────────────────────────
     textModal: {
         expandInput:
-            'Open the full untruncated input prompt in a modal where you can scroll, copy, or open in a new browser tab.',
+            'Open the full untruncated input prompt in a modal where you can scroll and copy.',
         expandOutput:
-            'Open the full untruncated generated output in a modal where you can scroll, copy, or open in a new browser tab.',
+            'Open the full untruncated generated output in a modal where you can scroll and copy.',
         copy:
             'Copy the full text to your clipboard. A confirmation appears next to the button when the copy succeeds.',
-        openInNewWindow:
-            'Open the full text in a new browser tab as a minimally-styled HTML page — useful for side-by-side comparison.',
         close:
             'Close the modal. Clicking the backdrop or pressing Escape also closes it.'
     },

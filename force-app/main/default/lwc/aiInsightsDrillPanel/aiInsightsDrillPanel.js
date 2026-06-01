@@ -329,7 +329,12 @@ export default class AiInsightsDrillPanel extends LightningElement {
         if (!row) return;
         const isInput = field === 'input';
         const title = isInput ? 'Input prompt' : 'Generated output';
-        const content = isInput ? row.inputPrompt : row.generatedText;
+        // Prefer the untruncated payload — `inputPrompt` / `generatedText` are
+        // capped at ~280 chars for the inline card. Fall back to the preview
+        // string if a future DTO drops the *Full fields.
+        const content = isInput
+            ? (row.inputPromptFull || row.inputPrompt)
+            : (row.generatedTextFull || row.generatedText);
         const metadata = {
             user: row.userName,
             model: row.model,

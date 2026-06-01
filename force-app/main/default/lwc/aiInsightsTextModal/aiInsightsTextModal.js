@@ -133,94 +133,6 @@ export default class AiInsightsTextModal extends LightningElement {
         document.body.removeChild(ta);
     }
 
-    /**
-     * Open the full text in a new browser tab as a minimally-styled HTML page.
-     * We use a Blob + object URL rather than a data URL so long content doesn't
-     * hit browser URL length limits. The page preserves whitespace (<pre>) and
-     * echoes the metadata header so the new tab is self-describing.
-     */
-    handleDownloadHtml() {
-        try {
-            const html = this.buildStandaloneHtml();
-            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const safeTitle = (this.title || 'fluentmetric').replace(/\W+/g, '_');
-            const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = `${safeTitle}_${stamp}.html`;
-            anchor.style.display = 'none';
-            // documentElement (not body) escapes the modal's shadow-root boundary
-            document.documentElement.appendChild(anchor);
-            anchor.click();
-            document.documentElement.removeChild(anchor);
-            setTimeout(() => URL.revokeObjectURL(url), 10000);
-            this.copyFeedback = 'Downloaded. Open the file to view in a new tab.';
-            this.copyFeedbackVariant = 'success';
-        } catch (err) {
-            this.copyFeedback = 'Download failed. Try Copy, then paste into a new tab.';
-            this.copyFeedbackVariant = 'error';
-        }
-    }
-
-    /**
-     * Open the full text in a new browser tab.
-     *
-     * LEX runs inside an iframe with strict CSP; data: and blob: URL navigation
-     * are both blocked by Chrome/Firefox/Safari from non-same-origin contexts.
-     * The only reliable pattern: call window.open('about:blank', '_blank')
-     * **synchronously** in the click handler (browser grants popup as a user
-     * gesture), then immediately write the HTML into the new window's document
-     * in the same synchronous tick. Falls back to handleDownloadHtml if the
-     * popup is blocked outright.
-     */
-    handleOpenInNewWindow() {
-        try {
-            const html = this.buildStandaloneHtml();
-            const win = window.open('about:blank', '_blank');
-            if (win) {
-                win.document.open('text/html', 'replace');
-                win.document.write(html);
-                win.document.close();
-                this.copyFeedback = 'Opened in new tab';
-                this.copyFeedbackVariant = 'success';
-                return;
-            }
-        } catch (err) {
-            // Fall through to download fallback
-        }
-        // Popup was blocked — download the file instead so the user can open it locally.
-        this.handleDownloadHtml();
-        this.copyFeedback = 'Popup blocked — downloaded as a file instead. Open it to view in a new tab.';
-        this.copyFeedbackVariant = 'success';
-    }
-
-    buildStandaloneHtml() {
-        const safeTitle = this.escapeHtml(this.title || 'FluentMetric AI');
-        const safeBody = this.escapeHtml(this.content || '');
-        const metaLines = this.buildMetadataLines()
-            .map((line) => `<div class="meta"><span class="meta-label">${this.escapeHtml(line.label)}</span><span class="meta-value">${this.escapeHtml(line.value)}</span></div>`)
-            .join('');
-        return [
-            '<!DOCTYPE html>',
-            '<html lang="en"><head><meta charset="utf-8">',
-            `<title>${safeTitle} — FluentMetric AI</title>`,
-            '<style>',
-            'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;padding:1.5rem;background:#fafafa;color:#181818;}',
-            'h1{font-size:1.25rem;margin:0 0 1rem 0;}',
-            '.meta-row{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;}',
-            '.meta{font-size:.8125rem;}',
-            '.meta-label{text-transform:uppercase;letter-spacing:.0625rem;color:#555;margin-right:.25rem;}',
-            '.meta-value{color:#181818;font-weight:600;}',
-            'pre{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.875rem;background:#fff;border:1px solid #e5e5e5;border-radius:.25rem;padding:1rem;margin:0;}',
-            '</style></head><body>',
-            `<h1>${safeTitle}</h1>`,
-            metaLines ? `<div class="meta-row">${metaLines}</div>` : '',
-            `<pre>${safeBody}</pre>`,
-            '</body></html>'
-        ].join('');
-    }
-
     buildMetadataLines() {
         const m = this.metadata || {};
         const out = [];
@@ -231,16 +143,6 @@ export default class AiInsightsTextModal extends LightningElement {
             out.push({ label: 'Tokens', value: String(m.tokens) });
         }
         return out;
-    }
-
-    escapeHtml(value) {
-        if (value === null || value === undefined) return '';
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     }
 
     // --- Getters -----------------------------------------------------------
