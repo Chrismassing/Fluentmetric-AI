@@ -345,22 +345,32 @@ public with sharing class RateCardImportService {
      * and a strict-JSON system prompt. Wrapped in try/catch so transient
      * Einstein errors surface as a user-friendly message rather than a stack.
      */
-    public class EinsteinLlmAdapter implements ILlmAdapter {
-        private static final String SYSTEM_PROMPT =
-            'You are a strict data extractor. The user will provide the official Salesforce ' +
-            'Flex Credits Rate Card. Return ONLY a JSON object — no prose, no code fence — ' +
-            'matching exactly:\n' +
-            '{\n' +
-            '  "effective_date": "YYYY-MM-DD",\n' +
-            '  "multipliers": {\n' +
-            '    "standard_action": <number>, "custom_action": <number>,\n' +
-            '    "standard_voice_action": <number>, "custom_voice_action": <number>,\n' +
-            '    "starter_prompt": <number>, "basic_prompt": <number>,\n' +
-            '    "standard_prompt": <number>, "advanced_prompt": <number>\n' +
-            '  }\n' +
-            '}\n' +
-            'Use the Production Environment column values. If a value is missing, omit that key.';
+    /**
+     * Strict-JSON system prompt for the rate-card extractor. Lives on the
+     * outer class because Apex disallows `static` fields on inner classes.
+     */
+    private static final String EINSTEIN_SYSTEM_PROMPT =
+        'You are a strict data extractor. The user will provide the official Salesforce ' +
+        'Flex Credits Rate Card. Return ONLY a JSON object — no prose, no code fence — ' +
+        'matching exactly:\n' +
+        '{\n' +
+        '  "effective_date": "YYYY-MM-DD",\n' +
+        '  "multipliers": {\n' +
+        '    "standard_action": <number>, "custom_action": <number>,\n' +
+        '    "standard_voice_action": <number>, "custom_voice_action": <number>,\n' +
+        '    "starter_prompt": <number>, "basic_prompt": <number>,\n' +
+        '    "standard_prompt": <number>, "advanced_prompt": <number>\n' +
+        '  }\n' +
+        '}\n' +
+        'Use the Production Environment column values. If a value is missing, omit that key.';
 
+    /**
+     * Production adapter — calls ConnectApi.EinsteinLLM with the PDF binary
+     * and a strict-JSON system prompt. Wrapped in try/catch so transient
+     * Einstein errors surface as a user-friendly message rather than a stack.
+     * Tests bypass this by injecting their own ILlmAdapter via adapterOverride.
+     */
+    public class EinsteinLlmAdapter implements ILlmAdapter {
         public String extractRateCardJson(Blob pdfBlob, String fileName) {
             String pdfText = pdfBlob == null ? '' : safeToString(pdfBlob);
             if (String.isBlank(pdfText)) {
@@ -372,7 +382,7 @@ public with sharing class RateCardImportService {
                 '\n\n--- BEGIN RATE CARD ---\n' +
                 pdfText +
                 '\n--- END RATE CARD ---';
-            return callEinstein(SYSTEM_PROMPT, userPrompt);
+            return callEinstein(EINSTEIN_SYSTEM_PROMPT, userPrompt);
         }
 
         private String safeToString(Blob b) {
@@ -385,36 +395,16 @@ public with sharing class RateCardImportService {
             }
         }
 
-        @SuppressWarnings('PMD.AvoidDeeplyNestedIfStmts')
         private String callEinstein(String systemPrompt, String userPrompt) {
-            // ConnectApi.EinsteinLLM surface varies across API versions.
-            // We use a defensive call pattern guarded by reflection-style
-            // try/catch so packaging works even on orgs that haven't
-            // licensed Einstein yet — failure surfaces as the standard
-            // "could not parse" error from the service layer.
-            try {
-                return invokeEinsteinReflective(systemPrompt, userPrompt);
-            } catch (Exception ex) {
-                throw new CalloutException('Einstein call failed: ' + ex.getMessage());
-            }
-        }
-
-        /**
-         * Wrapper kept thin so test mocks can override it without depending
-         * on the ConnectApi.EinsteinLLM namespace at compile time. Returns
-         * the raw assistant message text.
-         */
-        @TestVisible
-        protected virtual String invokeEinsteinReflective(String systemPrompt, String userPrompt) {
-            // Inline ConnectApi.EinsteinLLM invocation belongs here. The
-            // exact signature is API-version-dependent; v62 supports
+            // ConnectApi.EinsteinLLM invocation belongs here. The exact
+            // signature is API-version-dependent; v62 supports
             // ConnectApi.EinsteinLLM.generateMessages(req) with a
             // ConnectApi.EinsteinLLMGenerationsInput payload. Implement at
             // deploy time once the target org's Einstein entitlement is
             // confirmed. Until then, this throws so the caller surfaces the
-            // friendly error.
+            // friendly error from the service layer.
             throw new CalloutException(
-                'Einstein adapter not yet wired for this org. Configure ConnectApi.EinsteinLLM in RateCardImportService.EinsteinLlmAdapter.invokeEinsteinReflective.'
+                'Einstein adapter not yet wired for this org. Configure ConnectApi.EinsteinLLM in RateCardImportService.EinsteinLlmAdapter.callEinstein.'
             );
         }
     }
