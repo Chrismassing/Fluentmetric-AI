@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 - **Tableau Next Edition:** Deferred to a later release.
 - For sandboxes, replace `login` with `test`.
 
+**Promotion status:** Beta only. A `--code-coverage` build attempt (1.1.0-2)
+failed with 17 pre-existing test failures in `AiInsightsServiceTest`,
+`AiInsightsServiceCoverageTest`, and `AiInsightsTestUtilSmokeTest` —
+NPEs at `AiInsightsService.collectBusinessKeys` and assertion failures in
+fixture helpers. The new `RateCardImportServiceTest` (8 tests) and
+extended `CostCalculatorServiceTest` (49 tests) all pass against `cvk-dev`.
+Test-debt fix tracked for v1.1.1.
+
 **Upgrade notes:** Adds the rate-card upload flow on the Cost panel. When an
 org has no Salesforce Digital Wallet (no `TenantEnrichedUsageEvent__dll`),
 the "Estimates, not billing" banner now exposes an **Upload latest rate
