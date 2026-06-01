@@ -41,8 +41,8 @@ Through `sf project deploy --source-dir force-app-tableau`:
 - **AnalyticsWorkspace**: `FluentMetric_AI_Workspace` referencing the
   `FluentMetric_AI` semantic model.
 - **AnalyticsDashboard / AnalyticsVisualization**: 4 dashboards
-  (`FluentMetric_Usage_Overview`, `FluentMetric_User_Adoption`,
-  `FluentMetric_Prompt_Performance`, `FluentMetric_Cost`) + their
+  (`FluentMetric_Adoption`, `FluentMetric_Feature_Adoption`,
+  `FluentMetric_Tokens_And_Safety`, `FluentMetric_Cost`) + their
   visualizations.
 - **Permission Set**: `FluentMetric_AI_Tableau_User`.
 - **Custom Labels**: `FM_TBL_*` (including `FM_TBL_Launcher_Workspace_Path`
@@ -121,10 +121,10 @@ install. They're authored once per major UX change and committed to source.
 
 1. In `cvk-dev`'s Tableau Next workspace, author 4 dashboards mirroring the
    Lightning edition's curated views:
-   - `FluentMetric_Usage_Overview` — KPI strip
-   - `FluentMetric_User_Adoption` — per-user table
-   - `FluentMetric_Prompt_Performance` — per-prompt table
-   - `FluentMetric_Cost` — token/cost breakdown
+   - `FluentMetric_Adoption` — adoption-rate KPI + active-users trend
+   - `FluentMetric_Feature_Adoption` — per-feature breadth/depth
+   - `FluentMetric_Tokens_And_Safety` — token consumption + toxicity
+   - `FluentMetric_Cost` — token-economics proxies for cost
 2. Retrieve into source:
    ```bash
    sf project retrieve start \

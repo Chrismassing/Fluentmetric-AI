@@ -69,7 +69,7 @@ Source: `ssot__User__dlm`. Projected 2026-05-28.
 | `ssot__Department__c`  | `Department`  | Clean name — no suffix                          |
 | `ssot__Title__c`       | `Title`       | Closest analogue to "Profile" in viz_specs      |
 | `ssot__Username__c`    | `Username`    |                                                 |
-| `ssot__FluentMetric_IsEntitled__c` | `Is_Entitled` | Stamped nightly by `FluentMetricEntitlementSyncSchedulable` from PSA. Projects as Text (`'true'` / `'false'`). Drives `Distinct_Entitled_Users_clc` and `Adoption_Rate_clc`. |
+| `Fluentmetric__c` (DMO) ← `FluentMetric_IsEntitled_c__c` (DLO) ← `User.FluentMetric_IsEntitled__c` (sObject) | `Fluentmetric` | Boolean denormalization stamped nightly by `FluentMetricEntitlementSyncSchedulable` from PSA. Drives `Distinct_Entitled_Users_clc` and `Adoption_Rate_clc`. **Naming gotcha:** Data Cloud's DLO ingestion appended `_c__c`; the DMO mapping then re-shortened to a generic `Fluentmetric__c` (rather than something descriptive like `Is_Entitled__c`). The calc-field expression references it as `[User_dlm].[Fluentmetric]` — Boolean type, so no string comparison. |
 
 **Notable absences in `ssot__User__dlm`:**
 

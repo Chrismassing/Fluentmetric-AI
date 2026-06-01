@@ -5,9 +5,9 @@
     "title_text": "FluentMetric AI — Adoption Health"
   },
   "metrics": [
+    "Adoption_Rate_mtc",
     "Active_Users_mtc",
-    "Total_Tokens_mtc",
-    "Avg_Tokens_Per_Request_mtc"
+    "Entitled_Users_mtc"
   ],
   "filters": [
     { "fieldName": "Department" },
@@ -15,18 +15,17 @@
     { "fieldName": "Feature" },
     { "fieldName": "Model" },
     { "fieldName": "Timestamp1" },
-    { "fieldName": "Username" }
+    { "fieldName": "Fluentmetric" }
   ],
   "visualizations": [
     {
-      "name": "Active_Users_by_Department",
-      "label": "Active Users by Department",
-      "template": "revenue_by_category",
+      "name": "Adoption_Rate_Trend",
+      "label": "Adoption Rate Trend",
+      "template": "trend_over_time",
       "fields": {
-        "category": "Department",
-        "amount": "Distinct_Active_Users_clc"
-      },
-      "color_dim": "Title"
+        "date": "Timestamp1",
+        "measure": "Adoption_Rate_clc"
+      }
     },
     {
       "name": "Active_Users_Trend_by_Department",
@@ -39,7 +38,17 @@
       }
     },
     {
-      "name": "Active_Users_by_Title_and_Department",
+      "name": "Active_Users_by_Department",
+      "label": "Active Users by Department",
+      "template": "revenue_by_category",
+      "fields": {
+        "category": "Department",
+        "amount": "Distinct_Active_Users_clc"
+      },
+      "color_dim": "Title"
+    },
+    {
+      "name": "Adoption_by_Title_and_Department",
       "label": "Active Users by Title and Department",
       "template": "stacked_bar_by_dimension",
       "fields": {
@@ -59,16 +68,6 @@
       "color_dim": "Department",
       "sort": { "field": "Distinct_Active_Users_clc", "direction": "DESC" },
       "limit": 10
-    },
-    {
-      "name": "Active_Users_Heatmap_Department_x_Title",
-      "label": "Active Users by Department and Title",
-      "template": "heatmap_grid",
-      "fields": {
-        "row_dim": "Department",
-        "col_dim": "Title",
-        "measure": "Distinct_Active_Users_clc"
-      }
     }
   ]
 }

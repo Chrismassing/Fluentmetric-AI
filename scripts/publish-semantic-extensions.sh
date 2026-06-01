@@ -14,20 +14,22 @@
 #
 # Calc fields created (cvk-dev):
 #   - Distinct_Active_Users_clc      — COUNTD over GenAIGatewayRequest_dlm.User_Id
-#   - Distinct_Entitled_Users_clc    — COUNTD of User_dlm.User_Id2 WHERE Is_Entitled = 'true'
+#   - Distinct_Entitled_Users_clc    — COUNTD of User_dlm.User_Id2 WHERE Fluentmetric is TRUE
 #   - Adoption_Rate_clc              — Distinct_Active_Users_clc / Distinct_Entitled_Users_clc
 #   - Total_Tokens_clc               — already-aggregated Total_Tokens (Sum)
 #   - Avg_Tokens_Per_Request_clc     — Total_Tokens / request count
 #   - Toxic_Rate_clc                 — toxicity rate over GenAIContentQuality_dlm
 #
-# Entitled denominator note: User_dlm.Is_Entitled is a denormalized text flag
-# stamped nightly by FluentMetricEntitlementSyncSchedulable from
+# Entitled denominator note: User_dlm.Fluentmetric is a denormalized boolean
+# flag stamped nightly by FluentMetricEntitlementSyncSchedulable from
 # PermissionSetAssignment of the FluentMetric_AI_Entitled_User permission set.
 # The Apex EntitlementService still resolves entitlement live for the Lightning
 # Edition; this projection exists so the Tableau Next semantic layer can
 # compute adoption rate without joining PSA (which Data Cloud doesn't project
-# as a User-keyed dimension). Field is Text-typed in the DLO, so the calc
-# expression compares to the string literal 'true'.
+# as a User-keyed dimension). DLO field is FluentMetric_IsEntitled_c__c
+# (BOOLEAN); the DMO mapping landed as Fluentmetric__c with SDM apiName
+# Fluentmetric — Boolean type, so the calc references it directly inside an
+# IF without a string-literal comparison.
 #
 # Metrics created:
 #   - Active_Users_mtc, Entitled_Users_mtc, Adoption_Rate_mtc,
@@ -231,18 +233,19 @@ run_idempotent "Distinct_Active_Users_clc" \
     --expression "COUNTD([GenAIGatewayRequest_dlm].[User_Id])" \
     --aggregation UserAgg
 
-# Entitled denominator: distinct users flagged Is_Entitled='true' on User_dlm.
+# Entitled denominator: distinct users flagged Fluentmetric=TRUE on User_dlm.
 # Stamped nightly from PermissionSetAssignment of FluentMetric_AI_Entitled_User
-# (see FluentMetricEntitlementSyncSchedulable). The Text comparison is a
-# Tableau Next semantic-layer constraint — Boolean-typed checkboxes still
-# project into the DLO as text strings.
+# (see FluentMetricEntitlementSyncSchedulable). The DLO field FluentMetric_-
+# IsEntitled_c__c is BOOLEAN; Data Cloud's DMO mapping landed it as
+# `Fluentmetric__c` and the SDM exposes it as the dimension `Fluentmetric` — so
+# the IF predicate uses the Boolean column directly (no string compare).
 run_idempotent "Distinct_Entitled_Users_clc" \
   python3 "$CREATE_CALC" \
     --sdm "$SDM_NAME" \
     --type measurement \
     --name Distinct_Entitled_Users_clc \
     --label "Distinct Entitled Users" \
-    --expression "COUNTD(IF [User_dlm].[Is_Entitled] = 'true' THEN [User_dlm].[User_Id2] END)" \
+    --expression "COUNTD(IF [User_dlm].[Fluentmetric] THEN [User_dlm].[User_Id2] END)" \
     --aggregation UserAgg
 
 # Adoption rate: of users who *could* use AI, how many did. Numerator is the
