@@ -220,22 +220,24 @@ public with sharing class RateCardImportService {
 
     private ParsedRateCard invokeLlm(ContentVersion cv) {
         ILlmAdapter adapter = adapterOverride == null ? new EinsteinLlmAdapter() : adapterOverride;
-        String json;
+        // Note: Apex is case-insensitive — naming this `json` would shadow
+        // the `JSON` system class, breaking `JSON.deserializeUntyped` below.
+        String rawPayload;
         try {
-            json = adapter.extractRateCardJson(cv.VersionData, cv.Title);
+            rawPayload = adapter.extractRateCardJson(cv.VersionData, cv.Title);
         } catch (Exception ex) {
             throw error('Could not parse the uploaded rate card. Try re-uploading the official Salesforce PDF.');
         }
-        if (String.isBlank(json)) {
+        if (String.isBlank(rawPayload)) {
             throw error('Empty response from rate-card parser');
         }
 
         ParsedRateCard parsed = new ParsedRateCard();
-        parsed.rawJson = json;
+        parsed.rawJson = rawPayload;
         parsed.multipliers = new Map<String, Decimal>();
 
         try {
-            Map<String, Object> root = (Map<String, Object>) JSON.deserializeUntyped(json);
+            Map<String, Object> root = (Map<String, Object>) JSON.deserializeUntyped(rawPayload);
             Object effDate = root.get('effective_date');
             parsed.effectiveDate = effDate == null ? null : String.valueOf(effDate);
 

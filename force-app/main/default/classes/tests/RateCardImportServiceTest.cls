@@ -22,18 +22,18 @@ private class RateCardImportServiceTest {
 
     /** Test adapter — returns whatever JSON the test seeded. */
     private class StubAdapter implements RateCardImportService.ILlmAdapter {
-        public String json;
+        public String payload;
         public Boolean throwOnCall = false;
 
-        public StubAdapter(String json) {
-            this.json = json;
+        public StubAdapter(String payload) {
+            this.payload = payload;
         }
 
         public String extractRateCardJson(Blob pdfBlob, String fileName) {
             if (throwOnCall) {
                 throw new CalloutException('Simulated Einstein outage');
             }
-            return json;
+            return payload;
         }
     }
 
