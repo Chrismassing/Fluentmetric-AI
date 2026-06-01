@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## [1.1.0] - 2026-06-01
 
-**Install URL:** _populated after `make release-lightning VERSION=1.1.0` prints the new 04t…_
+**Install URL:**
+- **Lightning Edition (beta):** https://login.salesforce.com/packaging/installPackage.apexp?p0=04tHn000001NtjYIAS
+- **Tableau Next Edition:** Deferred to a later release.
 - For sandboxes, replace `login` with `test`.
 
 **Upgrade notes:** Adds the rate-card upload flow on the Cost panel. When an
