@@ -96,19 +96,87 @@
         <apexClass>FluentMetricEntitlementSyncSchedulable</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>RateCardImportService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <field>User.FluentMetric_IsEntitled__c</field>
         <readable>true</readable>
         <editable>false</editable>
     </fieldPermissions>
+    <fieldPermissions>
+        <field>FluentMetric_Cost_Settings__c.Custom_Action_FC__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>FluentMetric_Cost_Settings__c.Standard_Voice_Action_FC__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>FluentMetric_Cost_Settings__c.Custom_Voice_Action_FC__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>FluentMetric_Cost_Settings__c.Tier_Starter_FC__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.ContentDocumentId__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.ParsedJson__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.EffectiveDate__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.AppliedBy__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.Status__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.ChangeSummary__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>RateCardUpload__c.Notes__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
     <objectPermissions>
         <object>FluentMetric_Cost_Settings__c</object>
         <allowRead>true</allowRead>
-        <allowCreate>false</allowCreate>
-        <allowEdit>false</allowEdit>
+        <allowCreate>true</allowCreate>
+        <allowEdit>true</allowEdit>
         <allowDelete>false</allowDelete>
         <modifyAllRecords>false</modifyAllRecords>
         <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <object>RateCardUpload__c</object>
+        <allowRead>true</allowRead>
+        <allowCreate>true</allowCreate>
+        <allowEdit>true</allowEdit>
+        <allowDelete>false</allowDelete>
+        <modifyAllRecords>false</modifyAllRecords>
+        <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
     <tabSettings>
         <tab>FluentMetric_AI</tab>

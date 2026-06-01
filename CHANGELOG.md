@@ -17,6 +17,77 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ---
 
+## [1.1.0] - 2026-06-01
+
+**Install URL:** _populated after `make release-lightning VERSION=1.1.0` prints the new 04t…_
+- For sandboxes, replace `login` with `test`.
+
+**Upgrade notes:** Adds the rate-card upload flow on the Cost panel. When an
+org has no Salesforce Digital Wallet (no `TenantEnrichedUsageEvent__dll`),
+the "Estimates, not billing" banner now exposes an **Upload latest rate
+card** button. Admins upload the Salesforce Flex Credits Rate Card PDF; an
+Apex-invoked LLM extracts the 8 multipliers (`standard_action`,
+`custom_action`, `standard_voice_action`, `custom_voice_action`,
+`starter_prompt`, `basic_prompt`, `standard_prompt`, `advanced_prompt`),
+the user reviews a diff, confirms, and the values are written to
+`FluentMetric_Cost_Settings__c`. The PDF + parsed JSON + per-field diff are
+persisted in a new `RateCardUpload__c` audit object so admins can revert.
+
+### Added
+
+- **`RateCardImportService`** Apex class — `parseUpload`,
+  `applyParsedUpload`, `revert`, `listRecent`. The LLM call is encapsulated
+  behind an `ILlmAdapter` interface so tests inject a stub via
+  `adapterOverride`. Production wiring of `ConnectApi.EinsteinLLM` is
+  per-org (the inner `EinsteinLlmAdapter` carries the strict-JSON system
+  prompt; the `invokeEinsteinReflective` body throws today and must be
+  filled in once the target org has a published Flex prompt template).
+- **`RateCardUpload__c`** custom object — AutoNumber Name (`RC-{0000}`),
+  fields: `ContentDocumentId__c`, `ParsedJson__c`, `EffectiveDate__c`,
+  `AppliedBy__c`, `Status__c` (Draft/Applied/Reverted, restricted),
+  `ChangeSummary__c`, `Notes__c`. ReadWrite sharing model.
+- **4 new fields on `FluentMetric_Cost_Settings__c`**: `Custom_Action_FC__c`
+  (default 20), `Standard_Voice_Action_FC__c` (default 30),
+  `Custom_Voice_Action_FC__c` (default 30), `Tier_Starter_FC__c` (default
+  2). Brings the schema to parity with the Salesforce public rate card's
+  8 production multipliers.
+- **`aiInsightsRateCardUpload`** LWC — 3-step modal (file → review diff →
+  applied), uses `lightning-file-upload` scoped to the running user,
+  fires `rateCardApplied` so `aiInsightsCostAnalysis` reloads tiles.
+- **CTAs in `aiInsightsCostAnalysis`** — "Upload latest rate card" button
+  in the estimates banner and "Refresh from rate card" inline link below
+  the Estimated USD tile. Both gated on `costSource !== 'ACTUAL_WALLET'`.
+- **5 custom labels**: `FM_Cost_Upload_Rate_Card_Button`,
+  `FM_Cost_Upload_Rate_Card_Helper`, `FM_Cost_Upload_Diff_Header`,
+  `FM_Cost_Upload_Confirm`, `FM_Cost_Upload_Applied_Toast`.
+- **Permissions** — `FluentMetric_AI_User` extended with `RateCardImportService`
+  class access, R/W on the 4 new cost-settings fields and 7 new
+  `RateCardUpload__c` fields, and full CRU + viewAllRecords on
+  `RateCardUpload__c`. Cost-settings object permissions upgraded to
+  Create/Edit so the upsert path succeeds.
+- **`CostCalculatorService.resetSettingsCacheForRefresh()`** — public hook
+  the import service calls after upsert so the rest of the transaction
+  sees the new multipliers.
+- **`RateCardImportServiceTest`** — 8 tests covering happy-path parse +
+  apply, revert restoring prior values, malformed JSON, missing
+  multipliers, blank payloads, unknown revert IDs, `listRecent` ordering,
+  and adapter-error friendly surfacing. Uses a `StubAdapter` injected via
+  `adapterOverride`.
+- **`CostCalculatorServiceTest`** — added `testRateCardRefresh_LegacyFieldsStillDriveCost`
+  asserting the 4 new multiplier fields, when populated alongside the
+  legacy 4, do NOT alter `costForRequests` / `costForAgentforceActions`
+  output. Guards against an accidental wiring change.
+
+### Notes
+
+- The Wallet path is untouched. Customers with `Enable_Wallet_Costs__c = true`
+  AND a working `TenantEnrichedUsageEvent__dll` see ACTUAL figures and the
+  upload CTA stays hidden.
+- Tableau Edition transitively benefits via `AiInsightsService` — no
+  changes to `force-app-tableau/`.
+
+---
+
 ## [1.0.1] - 2026-05-29
 
 **Install URLs:**

@@ -41,8 +41,16 @@
                                 directional analysis only.
                             </p>
                         </div>
-                        <div class="slds-col slds-no-flex">
+                        <div class="slds-col slds-no-flex slds-grid slds-grid_vertical-align-center">
+                            <template lwc:if={canUploadRateCard}>
+                                <lightning-button
+                                    label={labels.uploadRateCard}
+                                    variant="brand"
+                                    onclick={handleOpenRateCardUpload}>
+                                </lightning-button>
+                            </template>
                             <lightning-button-icon
+                                class="slds-m-left_x-small"
                                 icon-name="utility:close"
                                 variant="bare"
                                 alternative-text="Dismiss estimates notice"
@@ -86,6 +94,13 @@
                                 {estimatedUsdDisplay}
                                 <c-ai-insights-cost-badge confidence={costConfidence} compact></c-ai-insights-cost-badge>
                             </p>
+                            <template lwc:if={canUploadRateCard}>
+                                <p class="fm-card__tone">
+                                    <a href="#" onclick={handleOpenRateCardUpload} role="button">
+                                        Refresh from rate card
+                                    </a>
+                                </p>
+                            </template>
                         </div>
                     </div>
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small" role="listitem">
@@ -119,6 +134,12 @@
                         </div>
                     </template>
                 </div>
+
+                <c-ai-insights-rate-card-upload
+                    is-open={rateCardModalOpen}
+                    onclose={handleRateCardModalClose}
+                    onratecardapplied={handleRateCardApplied}>
+                </c-ai-insights-rate-card-upload>
 
                 <!-- Inline rate-card settings for admins tuning the estimates.
                      Co-locating the knob next to the numbers it affects is

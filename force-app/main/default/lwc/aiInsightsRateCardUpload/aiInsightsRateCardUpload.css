@@ -1,0 +1,12 @@
+.fm-rcu-spinner {
+    position: relative;
+    min-height: 4rem;
+}
+
+.fm-rcu-row_changed {
+    background: var(--slds-g-color-warning-container-1, #fffbe6);
+}
+
+.fm-rcu-row_changed strong {
+    color: var(--slds-g-color-warning-1, #c7600c);
+}

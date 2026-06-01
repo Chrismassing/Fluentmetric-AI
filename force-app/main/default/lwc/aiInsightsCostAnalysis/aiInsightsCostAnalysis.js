@@ -4,6 +4,7 @@ import AI_INSIGHTS_DATE_RANGE from '@salesforce/messageChannel/AiInsightsDateRan
 import AI_INSIGHTS_FILTERS from '@salesforce/messageChannel/AiInsightsFilters__c';
 import getOverview from '@salesforce/apex/AiInsightsController.getOverview';
 import getCostSettings from '@salesforce/apex/AiInsightsController.getCostSettings';
+import FM_Cost_Upload_Rate_Card_Button from '@salesforce/label/c.FM_Cost_Upload_Rate_Card_Button';
 
 /**
  * Cost Analysis (Estimated) panel.
@@ -46,6 +47,11 @@ export default class AiInsightsCostAnalysis extends LightningElement {
     costMetricsEnabled = false;
     costEnabledKnown = false;
     bannerDismissed = false;
+    rateCardModalOpen = false;
+
+    labels = {
+        uploadRateCard: FM_Cost_Upload_Rate_Card_Button
+    };
 
     connectedCallback() {
         this.bannerDismissed = this.readBannerState();
@@ -182,6 +188,28 @@ export default class AiInsightsCostAnalysis extends LightningElement {
 
     get isWalletActual() {
         return this.costSource === 'ACTUAL_WALLET';
+    }
+
+    /**
+     * The rate-card upload CTA only makes sense when figures are
+     * estimates — Wallet-actuals are sourced from billing, so refreshing
+     * the public rate card wouldn't change the headline.
+     */
+    get canUploadRateCard() {
+        return this.costMetricsEnabled && !this.isWalletActual;
+    }
+
+    handleOpenRateCardUpload() {
+        this.rateCardModalOpen = true;
+    }
+
+    handleRateCardModalClose() {
+        this.rateCardModalOpen = false;
+    }
+
+    handleRateCardApplied() {
+        // Multipliers changed — re-fetch overview so tiles reflect them.
+        this.loadOverview();
     }
 
     /**

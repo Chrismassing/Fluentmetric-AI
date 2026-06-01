@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AppliedBy__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>User who applied this rate-card upload to the org-level cost settings.</description>
+    <externalId>false</externalId>
+    <label>Applied By</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Rate Card Uploads</relationshipLabel>
+    <relationshipName>RateCardUploads</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

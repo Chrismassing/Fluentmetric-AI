@@ -1,0 +1,119 @@
+<template>
+    <template lwc:if={isOpen}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="fm-rcu-heading"
+            class="slds-modal slds-fade-in-open slds-modal_medium"
+            data-role="backdrop"
+            onclick={handleBackdropClick}>
+            <div class="slds-modal__container" onclick={handleModalClick}>
+                <header class="slds-modal__header">
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        size="medium"
+                        variant="bare-inverse"
+                        class="slds-modal__close"
+                        alternative-text="Close"
+                        title="Close"
+                        onclick={handleClose}>
+                    </lightning-button-icon>
+                    <h2 id="fm-rcu-heading" class="slds-modal__title slds-hyphenate">
+                        Refresh from Flex Credits Rate Card
+                    </h2>
+                </header>
+
+                <div class="slds-modal__content slds-p-around_medium">
+                    <template lwc:if={hasError}>
+                        <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-bottom_small" role="alert">
+                            <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                            <span class="slds-m-left_x-small">{errorMessage}</span>
+                        </div>
+                    </template>
+
+                    <template lwc:if={loading}>
+                        <div class="fm-rcu-spinner" role="status">
+                            <lightning-spinner alternative-text="Working" size="medium" variant="brand"></lightning-spinner>
+                        </div>
+                    </template>
+
+                    <template lwc:if={isUploadStep}>
+                        <p class="slds-text-body_regular slds-m-bottom_small">{labels.helper}</p>
+                        <lightning-file-upload
+                            label="Upload rate card (PDF)"
+                            name="rateCardUpload"
+                            accept={acceptedFormats}
+                            record-id={recordId}
+                            multiple="false"
+                            onuploadfinished={handleUploadFinished}>
+                        </lightning-file-upload>
+                    </template>
+
+                    <template lwc:if={isReviewStep}>
+                        <h3 class="slds-text-heading_small slds-m-bottom_x-small">{labels.diffHeader}</h3>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                            Effective date: {effectiveDateDisplay}
+                        </p>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered" role="table">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">Usage type</th>
+                                    <th scope="col">Current</th>
+                                    <th scope="col">New</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={diffRows} for:item="row">
+                                    <tr key={row.field} class={row.changeClass}>
+                                        <th scope="row">{row.labelDisplay}</th>
+                                        <td>{row.currentDisplay}</td>
+                                        <td><strong>{row.newDisplay}</strong></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+
+                        <lightning-textarea
+                            class="slds-m-top_medium"
+                            label="Notes (optional)"
+                            value={notes}
+                            placeholder="Reason for refresh, contract refs, etc."
+                            onchange={handleNotesChange}>
+                        </lightning-textarea>
+                    </template>
+
+                    <template lwc:if={isDoneStep}>
+                        <div class="slds-text-align_center slds-p-vertical_large">
+                            <lightning-icon icon-name="utility:success" variant="success" size="large"></lightning-icon>
+                            <p class="slds-text-heading_small slds-m-top_small">Rate card applied.</p>
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                                The cost tiles will refresh with the new multipliers.
+                            </p>
+                        </div>
+                    </template>
+                </div>
+
+                <footer class="slds-modal__footer">
+                    <template lwc:if={isUploadStep}>
+                        <lightning-button label="Cancel" onclick={handleClose}></lightning-button>
+                    </template>
+                    <template lwc:if={isReviewStep}>
+                        <lightning-button label="Start over" onclick={handleStartOver}></lightning-button>
+                        <lightning-button
+                            class="slds-m-left_x-small"
+                            label={labels.confirm}
+                            variant="brand"
+                            disabled={loading}
+                            onclick={handleApply}>
+                        </lightning-button>
+                    </template>
+                    <template lwc:if={isDoneStep}>
+                        <lightning-button label="Close" variant="brand" onclick={handleClose}></lightning-button>
+                    </template>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

@@ -506,6 +506,60 @@ public with sharing class AiInsightsController {
         return out.isEmpty() ? null : out;
     }
 
+    // ───────────────────────── Rate card upload (admin) ─────────────
+
+    /**
+     * Parse an uploaded rate-card PDF (ContentVersion id from
+     * lightning-file-upload). Returns the extracted multipliers plus a
+     * field-level diff against the current FluentMetric_Cost_Settings__c
+     * org-default record. NOT cacheable — invokes the LLM each call.
+     */
+    @AuraEnabled
+    public static RateCardImportService.ParseResult parseRateCardUpload(Id contentVersionId) {
+        try {
+            return new RateCardImportService().parseUpload(contentVersionId);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to parse rate card');
+        }
+    }
+
+    /**
+     * Apply the parsed payload to the cost-settings record and write an
+     * audit trail. Returns the new RateCardUpload__c.Id. The LWC re-fetches
+     * `getOverview` after this resolves so the cost tiles refresh.
+     */
+    @AuraEnabled
+    public static Id applyRateCardUpload(Id contentVersionId, String parsedJson, String notes) {
+        try {
+            return new RateCardImportService().applyParsedUpload(contentVersionId, parsedJson, notes);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to apply rate card');
+        }
+    }
+
+    /**
+     * Roll back a previously Applied upload — restores the captured prior
+     * values and flips the audit row to Reverted.
+     */
+    @AuraEnabled
+    public static Id revertRateCardUpload(Id rateCardUploadId) {
+        try {
+            return new RateCardImportService().revert(rateCardUploadId);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to revert rate card upload');
+        }
+    }
+
+    /** Recent uploads for the audit drawer. Defaults to 10. */
+    @AuraEnabled(cacheable=true)
+    public static List<RateCardUpload__c> listRateCardUploads(Integer limitN) {
+        try {
+            return new RateCardImportService().listRecent(limitN);
+        } catch (Exception e) {
+            throw wrap(e, 'Unable to load rate card uploads');
+        }
+    }
+
     private static AuraHandledException wrap(Exception e, String friendlyMessage) {
         String detail = e == null ? 'Unknown error' : e.getMessage();
         AuraHandledException ahe = new AuraHandledException(friendlyMessage + ': ' + detail);

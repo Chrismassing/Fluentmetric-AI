@@ -693,6 +693,52 @@ private class CostCalculatorServiceTest {
         Assert.areEqual(0L, r.flexCredits, 'all-null list contributes nothing');
     }
 
+    /**
+     * Rate-card refresh path: the upload flow writes 8 multiplier fields to
+     * FluentMetric_Cost_Settings__c, but only 4 (Action_Flat_FC, Tier_Basic,
+     * Tier_Standard, Tier_Advanced) are read by costForRequests today. This
+     * asserts that populating the new fields (Custom_Action, *_Voice_Action,
+     * Tier_Starter) does not alter what the legacy fields produce — guarding
+     * against an accidental wiring change in CostCalculatorService that would
+     * break customers who upload a rate card.
+     */
+    @IsTest
+    static void testRateCardRefresh_LegacyFieldsStillDriveCost() {
+        seedCache();
+        FluentMetric_Cost_Settings__c s = new FluentMetric_Cost_Settings__c();
+        s.Flex_Credit_USD_Rate__c = 0.004;
+        s.Discount_Percent__c = 0;
+        s.Default_Fallback_Model__c = 'Standard-Default';
+        s.Enable_Cost_Metrics__c = true;
+        // Legacy 4 — these drive costForRequests today.
+        s.Tier_Basic_FC__c = 2;
+        s.Tier_Standard_FC__c = 4;
+        s.Tier_Advanced_FC__c = 16;
+        s.Action_Flat_FC__c = 20;
+        // New 4 from the rate-card import — populated but not yet consumed.
+        // The assertion is that their presence is harmless.
+        s.Tier_Starter_FC__c = 2;
+        s.Custom_Action_FC__c = 20;
+        s.Standard_Voice_Action_FC__c = 30;
+        s.Custom_Voice_Action_FC__c = 30;
+        s.Prompt_Token_Threshold__c = 2000;
+        s.Action_Token_Threshold__c = 10000;
+        CostCalculatorService.settingsCache = s;
+
+        CostCalculatorService svc = new CostCalculatorService();
+
+        Test.startTest();
+        // Standard tier: still 4 FC × 10 = 40 FC, regardless of new fields.
+        CostCalculatorService.CostResult standard = svc.costForAggregate('gpt-4o', 10, 1000L);
+        // Action: still 20 FC × 1 = 20 FC, regardless of Custom_Action_FC__c.
+        CostCalculatorService.CostResult action = svc.costForAgentforceActions(1, 5000L);
+        Test.stopTest();
+
+        Assert.areEqual(40L, standard.flexCredits, 'Tier_Standard_FC__c still drives standard tier');
+        Assert.areEqual(Decimal.valueOf('0.1600'), standard.baseUsd);
+        Assert.areEqual(20L, action.flexCredits, 'Action_Flat_FC__c still drives action pricing');
+    }
+
     @IsTest
     static void testLoadRateCards_RealMetadata() {
         // Reset caches so loadRateCards runs the SOQL path once.

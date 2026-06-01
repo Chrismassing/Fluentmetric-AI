@@ -650,4 +650,14 @@ public with sharing virtual class CostCalculatorService {
         rateCardByModel = null;
         settingsCache = null;
     }
+
+    /**
+     * Production hook for callers that mutate the cost-settings record
+     * mid-transaction (RateCardImportService) and need the next read to
+     * see the new values. Drops only the settings cache; the rate-card
+     * cache is unaffected.
+     */
+    public static void resetSettingsCacheForRefresh() {
+        settingsCache = null;
+    }
 }

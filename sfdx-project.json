@@ -4,9 +4,9 @@
       "path": "force-app",
       "default": true,
       "package": "FluentMetric AI",
-      "versionName": "Version 1.0.1",
-      "versionNumber": "1.0.1.NEXT",
-      "versionDescription": "Einstein GenAI Audit & Feedback dashboards"
+      "versionName": "Version 1.1.0",
+      "versionNumber": "1.1.0.NEXT",
+      "versionDescription": "Rate-card upload flow + 4 new cost-multiplier fields"
     },
     {
       "path": "force-app-tableau",

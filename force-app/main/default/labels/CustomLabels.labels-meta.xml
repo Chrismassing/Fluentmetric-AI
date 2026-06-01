@@ -455,4 +455,45 @@
         <shortDescription>User Adoption - cohort retention disclosure heading</shortDescription>
         <value>Cohort retention</value>
     </labels>
+    <!-- ═══════════ Cost - rate card upload ═══════════ -->
+    <labels>
+        <fullName>FM_Cost_Upload_Rate_Card_Button</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>CTA on the cost tiles when no Wallet data is available</shortDescription>
+        <value>Upload latest rate card</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Upload_Rate_Card_Helper</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Helper text in the rate-card upload modal</shortDescription>
+        <value>Upload the official Salesforce Flex Credits Rate Card PDF. The values from the Production Environment column will be parsed and proposed as updates to the cost-settings multipliers.</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Upload_Diff_Header</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Heading above the parsed-vs-current diff table</shortDescription>
+        <value>Review parsed multipliers</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Upload_Confirm</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Confirm button label in the upload modal</shortDescription>
+        <value>Apply to cost settings</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Upload_Applied_Toast</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Toast body shown after a successful rate-card apply</shortDescription>
+        <value>Multipliers updated. Cost tiles will refresh on next reload.</value>
+    </labels>
 </CustomLabels>
