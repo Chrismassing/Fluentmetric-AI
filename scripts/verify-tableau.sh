@@ -4,8 +4,8 @@
 # End-to-end smoke test for the Tableau Next edition install. Verifies:
 #   1. Semantic model FluentMetric_AI exists in Data Cloud SSOT.
 #   2. AnalyticsWorkspace FluentMetric_AI_Workspace is deployed.
-#   3. Seven AnalyticsDashboard rows whose DeveloperName starts with FluentMetric_ exist
-#      (4 originals + 3 scripted: Adoption, Tokens_And_Safety, Feature_Adoption).
+#   3. Four AnalyticsDashboard rows whose DeveloperName starts with FluentMetric_ exist
+#      (4 scripted: Adoption, Feature_Adoption, Tokens_And_Safety, Cost).
 #   4. The Lightning-edition service backing the agent actions runs without error.
 #   5. Two adoption-parity actions (GetEntitlementSnapshotAction, GetAdoptionDeltasAction)
 #      execute without error envelopes.
@@ -21,11 +21,11 @@ TARGET_ORG="${1:-${TARGET_ORG:-cvk-dev}}"
 # SSOT semantic-model endpoint is GA on v66 only as of 2026-05; v67 returns 404.
 API_VERSION="${API_VERSION:-66.0}"
 MODEL_NAME="${MODEL_NAME:-FluentMetric_AI}"
-# 3 scripted dashboards: FluentMetric_Adoption, FluentMetric_Feature_Adoption,
-# FluentMetric_Tokens_And_Safety. The original parity plan also called for 4
-# UI-authored dashboards (totalling 7), but we pivoted entirely to the scripted
-# pipeline and dropped the manual authoring step.
-EXPECTED_DASHBOARD_COUNT="${EXPECTED_DASHBOARD_COUNT:-3}"
+# 4 scripted dashboards: FluentMetric_Adoption, FluentMetric_Feature_Adoption,
+# FluentMetric_Tokens_And_Safety, FluentMetric_Cost. The original parity plan
+# also called for 4 UI-authored dashboards, but we pivoted entirely to the
+# scripted pipeline and dropped the manual authoring step.
+EXPECTED_DASHBOARD_COUNT="${EXPECTED_DASHBOARD_COUNT:-4}"
 APEX_FILE="${APEX_FILE:-scripts/verify-actions.apex}"
 
 red()    { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -91,7 +91,7 @@ if [[ "$DASH_COUNT" -ge "$EXPECTED_DASHBOARD_COUNT" ]]; then
   PASS=$((PASS+1))
 else
   red "  FAIL — found $DASH_COUNT, expected $EXPECTED_DASHBOARD_COUNT."
-  yellow "  Run 'make publish-dashboards TARGET_ORG=$TARGET_ORG' to publish the 3 scripted dashboards."
+  yellow "  Run 'make publish-dashboards TARGET_ORG=$TARGET_ORG' to publish the 4 scripted dashboards."
   FAIL=$((FAIL+1))
 fi
 

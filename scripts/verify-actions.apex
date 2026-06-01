@@ -11,6 +11,7 @@
 //   - overview                — GetUsageOverviewAction (legacy check)
 //   - adoption_entitlement    — GetEntitlementSnapshotAction
 //   - adoption_deltas         — GetAdoptionDeltasAction (WoW)
+//   - cost                    — GetCostBreakdownAction (Wallet-first cost rollup)
 
 // --- 1. Usage overview ------------------------------------------------------
 GetUsageOverviewAction.Request overviewReq = new GetUsageOverviewAction.Request();
@@ -71,5 +72,28 @@ if (deltaOut == null || deltaOut.isEmpty()) {
             + ' usersWow=' + r.latestUsersWowPctLabel
             + ' tokensWow=' + r.latestTokensWowPctLabel
             + ' latestWeek=' + r.latestWeekIsoLabel);
+    }
+}
+
+// --- 4. Cost breakdown -------------------------------------------------------
+GetCostBreakdownAction.Request costReq = new GetCostBreakdownAction.Request();
+costReq.groupBy = 'model';
+List<GetCostBreakdownAction.Response> costOut = GetCostBreakdownAction.run(
+    new List<GetCostBreakdownAction.Request>{ costReq }
+);
+
+if (costOut == null || costOut.isEmpty()) {
+    System.debug('VERIFY_RESULT::FAIL::cost::no response returned');
+} else {
+    GetCostBreakdownAction.Response r = costOut[0];
+    Boolean costErrored = r.rowsJson != null && r.rowsJson.contains('"error":true');
+    if (costErrored || r.rowsJson == null) {
+        System.debug('VERIFY_RESULT::FAIL::cost::' + r.rowsJson);
+    } else {
+        System.debug('VERIFY_RESULT::OK::cost::groupBy=' + r.groupBy
+            + ' totalFC=' + r.totalFlexCredits
+            + ' totalUsd=' + r.totalUsd
+            + ' confidence=' + r.costConfidence
+            + ' source=' + r.costSource);
     }
 }

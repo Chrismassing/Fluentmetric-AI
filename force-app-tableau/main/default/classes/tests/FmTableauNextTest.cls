@@ -12,6 +12,7 @@ private class FmTableauNextTest {
         public List<FeatureAdoptionDTO> features = new List<FeatureAdoptionDTO>();
         public ContentSafetyDTO safety;
         public List<TokenConsumptionDTO> tokenRows = new List<TokenConsumptionDTO>();
+        public List<CostBreakdownDTO> costRows = new List<CostBreakdownDTO>();
         public EntityDetailsDTO entityDetails;
         public List<PromptOutputDTO> promptOutputs = new List<PromptOutputDTO>();
 
@@ -64,6 +65,11 @@ private class FmTableauNextTest {
             if (shouldThrow)
                 throw new IllegalArgumentException('boom');
             return tokenRows;
+        }
+        public override List<CostBreakdownDTO> getCostConsumption(DateRangeFilter f, String groupBy) {
+            if (shouldThrow)
+                throw new IllegalArgumentException('boom');
+            return costRows;
         }
         public override EntityDetailsDTO getEntityDetails(
             String entityType,
@@ -648,5 +654,124 @@ private class FmTableauNextTest {
 
         System.assert(out[0].outputsJson.contains('"error":true'));
         System.assertEquals(0, out[0].rowCount);
+    }
+
+    // ─────────────────── Phase 2 — cost breakdown action ───────────────────────
+
+    private static CostBreakdownDTO costRow(
+        String key,
+        String label,
+        Long fc,
+        Decimal usd,
+        String confidence,
+        String source
+    ) {
+        CostBreakdownDTO r = new CostBreakdownDTO();
+        r.groupKey = key;
+        r.groupLabel = label;
+        r.flexCredits = fc;
+        r.discountedUsd = usd;
+        r.confidence = confidence;
+        r.source = source;
+        return r;
+    }
+
+    @IsTest
+    static void getCostBreakdownActionWalletAvailable() {
+        StubService stub = new StubService();
+        stub.costRows = new List<CostBreakdownDTO>{
+            costRow(
+                'gpt-4o',
+                'gpt-4o',
+                900L,
+                12.3456,
+                CostCalculatorService.CONFIDENCE_ACTUAL,
+                CostCalculatorService.SOURCE_WALLET
+            ),
+            costRow(
+                'gpt-3.5',
+                'gpt-3.5',
+                100L,
+                1.2345,
+                CostCalculatorService.CONFIDENCE_ACTUAL,
+                CostCalculatorService.SOURCE_WALLET
+            )
+        };
+        GetCostBreakdownAction.serviceOverride = stub;
+        GetCostBreakdownAction.Request r = new GetCostBreakdownAction.Request();
+        r.groupBy = 'model';
+
+        Test.startTest();
+        List<GetCostBreakdownAction.Response> out = GetCostBreakdownAction.run(
+            new List<GetCostBreakdownAction.Request>{ r }
+        );
+        Test.stopTest();
+
+        System.assertEquals('model', out[0].groupBy);
+        System.assertEquals(1000L, out[0].totalFlexCredits);
+        System.assertEquals(13.5801, out[0].totalUsd);
+        System.assertEquals(CostCalculatorService.CONFIDENCE_ACTUAL, out[0].costConfidence);
+        System.assertEquals(CostCalculatorService.SOURCE_WALLET, out[0].costSource);
+        System.assert(out[0].rowsJson.contains('gpt-4o'));
+        System.assert(out[0].rowsJson.contains('gpt-3.5'));
+    }
+
+    @IsTest
+    static void getCostBreakdownActionWalletUnavailable() {
+        StubService stub = new StubService();
+        stub.costRows = new List<CostBreakdownDTO>{
+            costRow(
+                'gpt-4o',
+                'gpt-4o',
+                500L,
+                7.5000,
+                CostCalculatorService.CONFIDENCE_HIGH,
+                CostCalculatorService.SOURCE_ESTIMATE
+            ),
+            costRow(
+                'gpt-3.5',
+                'gpt-3.5',
+                250L,
+                2.5000,
+                CostCalculatorService.CONFIDENCE_FALLBACK,
+                CostCalculatorService.SOURCE_ESTIMATE
+            )
+        };
+        GetCostBreakdownAction.serviceOverride = stub;
+        GetCostBreakdownAction.Request r = new GetCostBreakdownAction.Request();
+
+        Test.startTest();
+        List<GetCostBreakdownAction.Response> out = GetCostBreakdownAction.run(
+            new List<GetCostBreakdownAction.Request>{ r }
+        );
+        Test.stopTest();
+
+        // Defaults to 'model' when groupBy is blank
+        System.assertEquals('model', out[0].groupBy);
+        System.assertEquals(750L, out[0].totalFlexCredits);
+        System.assertEquals(10.0000, out[0].totalUsd);
+        // FALLBACK is weaker than HIGH — rolled-up confidence should be FALLBACK
+        System.assertEquals(CostCalculatorService.CONFIDENCE_FALLBACK, out[0].costConfidence);
+        // No wallet rows → ESTIMATED_TIER
+        System.assertEquals(CostCalculatorService.SOURCE_ESTIMATE, out[0].costSource);
+    }
+
+    @IsTest
+    static void getCostBreakdownActionEmitsErrorEnvelope() {
+        StubService stub = new StubService();
+        stub.shouldThrow = true;
+        GetCostBreakdownAction.serviceOverride = stub;
+
+        Test.startTest();
+        List<GetCostBreakdownAction.Response> out = GetCostBreakdownAction.run(
+            new List<GetCostBreakdownAction.Request>{ new GetCostBreakdownAction.Request() }
+        );
+        Test.stopTest();
+
+        System.assert(out[0].rowsJson.contains('"error":true'));
+        System.assertEquals(0L, out[0].totalFlexCredits);
+        System.assertEquals(0, out[0].totalUsd);
+        System.assertEquals(CostCalculatorService.CONFIDENCE_NOT_COSTED, out[0].costConfidence);
+        System.assertEquals(CostCalculatorService.SOURCE_NONE, out[0].costSource);
     }
 }

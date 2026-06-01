@@ -1,0 +1,74 @@
+{
+  "workspace_label": "FluentMetric AI",
+  "pattern": "f_layout",
+  "pattern_args": {
+    "title_text": "FluentMetric AI — Cost & Token Economics"
+  },
+  "metrics": [
+    "Total_Tokens_mtc",
+    "Avg_Tokens_Per_Request_mtc",
+    "Active_Users_mtc"
+  ],
+  "filters": [
+    { "fieldName": "Department" },
+    { "fieldName": "Title" },
+    { "fieldName": "Feature" },
+    { "fieldName": "Model" },
+    { "fieldName": "Timestamp1" }
+  ],
+  "visualizations": [
+    {
+      "name": "Tokens_by_Model",
+      "label": "Total Tokens by Model",
+      "template": "revenue_by_category",
+      "fields": {
+        "category": "Model",
+        "amount": "Total_Tokens_clc"
+      },
+      "color_dim": "Feature",
+      "sort": { "field": "Total_Tokens_clc", "direction": "DESC" },
+      "limit": 10
+    },
+    {
+      "name": "Tokens_by_Feature",
+      "label": "Total Tokens by Feature",
+      "template": "revenue_by_category",
+      "fields": {
+        "category": "Feature",
+        "amount": "Total_Tokens_clc"
+      },
+      "color_dim": "Model",
+      "sort": { "field": "Total_Tokens_clc", "direction": "DESC" }
+    },
+    {
+      "name": "Tokens_Trend_Over_Time",
+      "label": "Total Tokens Trend",
+      "template": "trend_over_time",
+      "fields": {
+        "date": "Timestamp1",
+        "measure": "Total_Tokens_clc"
+      }
+    },
+    {
+      "name": "Avg_Tokens_Per_Request_by_Model",
+      "label": "Avg Tokens per Request by Model",
+      "template": "revenue_by_category",
+      "fields": {
+        "category": "Model",
+        "amount": "Avg_Tokens_Per_Request_clc"
+      },
+      "color_dim": "Feature",
+      "sort": { "field": "Avg_Tokens_Per_Request_clc", "direction": "DESC" }
+    },
+    {
+      "name": "Tokens_by_Feature_and_Model",
+      "label": "Tokens by Feature and Model",
+      "template": "stacked_bar_by_dimension",
+      "fields": {
+        "category": "Feature",
+        "stack_dim": "Model",
+        "amount": "Total_Tokens_clc"
+      }
+    }
+  ]
+}

@@ -24,3 +24,7 @@ node_modules/
 force-app-tableau/main/default/analyticsWorkspaces/
 force-app-tableau/main/default/analyticsDashboards/
 force-app-tableau/main/default/analyticsVisualizations/
+
+# AiAuthoringBundle (.agent) requires API 64.0+ and ships via `sf agent publish`
+# in scripts/publish-agent.sh — never via `sf project deploy`.
+force-app-tableau/main/default/aiAuthoringBundles/

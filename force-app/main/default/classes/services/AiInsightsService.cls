@@ -1802,6 +1802,185 @@ public with sharing virtual class AiInsightsService {
         return dto;
     }
 
+    // ───────────────────────── Cost Consumption ──────────────────
+    //
+    // Powers the Tableau Edition's GetCostBreakdownAction (v1.1). Returns a
+    // per-group cost breakdown so the agent can answer "how much did this
+    // cost" / "spend by model". Each row carries the same confidence / source
+    // bands users see on the Lightning Overview tile.
+    //
+    // Pricing path:
+    //   1. For each group row, ask CostCalculatorService.costForAggregate(...)
+    //      using the model name when grouping by model, or null otherwise (the
+    //      null-model path falls back to the Standard tier — same policy used
+    //      by getTokenConsumption / runExplorer).
+    //   2. After the per-row tier estimate is built, probe the Wallet via
+    //      CostCalculatorService.costForWindow(). When Wallet returns ACTUAL
+    //      Flex Credits, redistribute the wallet total proportionally by each
+    //      row's tier-rate FC share and stamp every row with confidence=ACTUAL
+    //      and source=ACTUAL_WALLET. If Wallet is unavailable or returns 0,
+    //      leave the per-row tier estimates as-is.
+    //
+    // Supported groupBy values: model | user | prompt | feature. Anything else
+    // (including null/blank) defaults to model.
+
+    public virtual List<CostBreakdownDTO> getCostConsumption(DateRangeFilter filter, String groupBy) {
+        validateFilter(filter);
+        String normalized = String.isBlank(groupBy) ? 'model' : groupBy.toLowerCase();
+        if (normalized != 'model' && normalized != 'user' && normalized != 'prompt' && normalized != 'feature') {
+            normalized = 'model';
+        }
+
+        // Step 1 — gather per-group aggregates from the appropriate DAO
+        // method. We don't fan out a per-row+per-model breakdown here (that's
+        // what getOverview / getUsageByUser do); for cost-by-user the agent
+        // wants a single number per user, so we approximate by passing each
+        // user's totalTokens to the null-model path. Same pattern as
+        // runExplorer's TotalCost metric.
+        List<AggregateResult> aggs;
+        try {
+            if (normalized == 'model') {
+                aggs = dao.getRequestAggregatesByModel(filter.startDate, filter.endDate);
+            } else if (normalized == 'user') {
+                aggs = dao.getRequestAggregatesByUser(filter.startDate, filter.endDate);
+            } else if (normalized == 'prompt') {
+                aggs = dao.getRequestAggregatesByPrompt(filter.startDate, filter.endDate);
+            } else {
+                aggs = dao.getRequestAggregatesByFeature(filter.startDate, filter.endDate);
+            }
+        } catch (Exception ex) {
+            return new List<CostBreakdownDTO>();
+        }
+        if (aggs == null || aggs.isEmpty()) {
+            return new List<CostBreakdownDTO>();
+        }
+
+        CostCalculatorService cost = new CostCalculatorService();
+        List<CostBreakdownDTO> rows = new List<CostBreakdownDTO>();
+        Set<String> labelKeys = new Set<String>();
+        Long totalTierFc = 0L;
+        Integer totalRequestCount = 0;
+
+        for (AggregateResult a : aggs) {
+            String gkey = (String) a.get('gkey');
+            if (String.isBlank(gkey)) {
+                if (normalized == 'user') {
+                    gkey = SYSTEM_SENTINEL;
+                } else {
+                    continue;
+                }
+            }
+            Integer cnt = toInteger(a.get('cnt'));
+            Long tt = toLong(a.get('tt'));
+            String modelArg = (normalized == 'model') ? gkey : null;
+            CostCalculatorService.CostResult cr = cost.costForAggregate(modelArg, cnt, tt);
+
+            CostBreakdownDTO dto = new CostBreakdownDTO();
+            dto.groupKey = gkey;
+            dto.groupLabel = gkey;
+            dto.flexCredits = cr.flexCredits == null ? 0L : cr.flexCredits;
+            dto.discountedUsd = cr.discountedUsd == null ? 0 : cr.discountedUsd.setScale(4);
+            dto.confidence = cr.confidence == null ? CostCalculatorService.CONFIDENCE_HIGH : cr.confidence;
+            dto.source = cr.source == null ? CostCalculatorService.SOURCE_ESTIMATE : cr.source;
+            rows.add(dto);
+            labelKeys.add(gkey);
+            totalTierFc += dto.flexCredits;
+            totalRequestCount += (cnt == null ? 0 : cnt);
+        }
+
+        // Resolve human-readable labels for User / Prompt groupings — model
+        // and feature are already self-labeling.
+        if (!labelKeys.isEmpty()) {
+            try {
+                Map<String, String> labels;
+                if (normalized == 'user') {
+                    labels = resolver.resolveUserNames(labelKeys);
+                } else if (normalized == 'prompt') {
+                    labels = resolver.resolvePromptTemplateLabels(labelKeys);
+                } else {
+                    labels = new Map<String, String>();
+                }
+                for (CostBreakdownDTO dto : rows) {
+                    String resolved = labels.get(dto.groupKey);
+                    if (String.isNotBlank(resolved)) {
+                        dto.groupLabel = resolved;
+                    }
+                }
+            } catch (Exception ex) {
+                // Label resolution best-effort — raw keys remain on failure.
+            }
+        }
+
+        // Step 2 — Wallet-first override. If Wallet has ACTUAL totals for
+        // this window, redistribute proportionally across rows. costForWindow
+        // expects a List<SObject> fallback, but when Wallet IS available it
+        // never reaches the fallback path, so passing null is safe.
+        try {
+            CostCalculatorService.CostResult walletTotal = cost.costForWindow(filter.startDate, filter.endDate, null);
+            if (
+                walletTotal != null &&
+                walletTotal.confidence == CostCalculatorService.CONFIDENCE_ACTUAL &&
+                walletTotal.flexCredits != null &&
+                walletTotal.flexCredits > 0
+            ) {
+                redistributeWalletTotals(rows, walletTotal, totalTierFc);
+            }
+        } catch (Exception ex) {
+            // Wallet probe failure leaves the per-row tier estimates intact.
+        }
+
+        return rows;
+    }
+
+    /**
+     * Redistribute Wallet ACTUAL Flex Credits across the per-row tier
+     * estimates by each row's share of the tier-rate FC total. Stamps every
+     * row's confidence to ACTUAL and source to ACTUAL_WALLET so the agent
+     * surfaces the same badge as the Lightning Overview tile. When the tier
+     * total is zero (e.g. cost metrics disabled mid-call), each row gets an
+     * even share so the totals still reconcile.
+     */
+    @TestVisible
+    private static void redistributeWalletTotals(
+        List<CostBreakdownDTO> rows,
+        CostCalculatorService.CostResult walletTotal,
+        Long totalTierFc
+    ) {
+        if (rows == null || rows.isEmpty() || walletTotal == null) {
+            return;
+        }
+        Long walletFc = walletTotal.flexCredits == null ? 0L : walletTotal.flexCredits;
+        Decimal walletUsd = walletTotal.discountedUsd == null ? 0 : walletTotal.discountedUsd;
+        Integer rowCount = rows.size();
+
+        Long fcAssigned = 0L;
+        Decimal usdAssigned = 0;
+        for (Integer i = 0; i < rowCount; i++) {
+            CostBreakdownDTO dto = rows[i];
+            Long rowFc;
+            Decimal rowUsd;
+            if (i == rowCount - 1) {
+                // Last row absorbs rounding remainders so the row-sum matches
+                // the wallet headline exactly.
+                rowFc = walletFc - fcAssigned;
+                rowUsd = walletUsd - usdAssigned;
+            } else if (totalTierFc == null || totalTierFc <= 0) {
+                rowFc = walletFc / rowCount;
+                rowUsd = (walletUsd / rowCount).setScale(4);
+            } else {
+                Decimal share = (Decimal) (dto.flexCredits == null ? 0L : dto.flexCredits) / totalTierFc;
+                rowFc = (walletFc * share).longValue();
+                rowUsd = (walletUsd * share).setScale(4);
+            }
+            dto.flexCredits = rowFc < 0 ? 0L : rowFc;
+            dto.discountedUsd = rowUsd == null ? 0 : rowUsd.setScale(4);
+            dto.confidence = CostCalculatorService.CONFIDENCE_ACTUAL;
+            dto.source = CostCalculatorService.SOURCE_WALLET;
+            fcAssigned += dto.flexCredits;
+            usdAssigned += dto.discountedUsd;
+        }
+    }
+
     // ───────────────────────── Safety Overview ───────────────────
 
     /**

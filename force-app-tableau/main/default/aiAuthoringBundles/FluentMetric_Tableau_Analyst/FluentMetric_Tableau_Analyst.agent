@@ -9,7 +9,8 @@ system:
 		- "Top prompts" / "which prompts" / "prompt acceptance": use get_usage_by_prompt.
 		- "How many of my licensed users use AI" / "is usage growing" / "who are my power users" / "feature adoption": route to adoption_health.
 		- "Cohort retention" / "weekly retention grid" / "stickiness": route to cohorts.
-		- "Toxic content" / "safety" / "token consumption" / "tokens by model": route to safety_and_tokens.
+		- "Toxic content" / "safety" / "token consumption" / "tokens by model": route to safety_tokens_and_cost.
+		- "How much did this cost" / "cost breakdown" / "spend by model" / "spend by user" / "Flex Credits" / "USD": route to safety_tokens_and_cost.
 		- "Show details for user X" / "show outputs for prompt X" / "drill into model Y": route to drilldown.
 		- "Where can I see this" / "open the dashboard" / "explore further": tell the user to click the "Open in Tableau Next" button on the FluentMetric AI for Tableau Next page.
 
@@ -42,7 +43,8 @@ start_agent topic_selector:
 			"Top prompts" / "which prompts": route to prompt_breakdown.
 			"Adoption" / "licensed users" / "week over week" / "power users" / "feature adoption": route to adoption_health.
 			"Cohort retention" / "weekly retention" / "stickiness": route to cohorts.
-			"Toxic" / "safety" / "tokens by model" / "token consumption": route to safety_and_tokens.
+			"Toxic" / "safety" / "tokens by model" / "token consumption": route to safety_tokens_and_cost.
+			"How much did this cost" / "cost breakdown" / "spend by model" / "spend by user" / "Flex Credits" / "USD spend": route to safety_tokens_and_cost.
 			"Show details for X" / "drill into X" / "sample outputs for prompt X": route to drilldown.
 		actions:
 			go_to_overview: @utils.transition to @topic.overview
@@ -55,8 +57,8 @@ start_agent topic_selector:
 				description: "Entitlement-aware adoption, week-over-week deltas, power users, feature adoption"
 			go_to_cohorts: @utils.transition to @topic.cohorts
 				description: "Weekly cohort retention grid"
-			go_to_safety_and_tokens: @utils.transition to @topic.safety_and_tokens
-				description: "Toxicity, content safety, and token consumption breakdowns"
+			go_to_safety_tokens_and_cost: @utils.transition to @topic.safety_tokens_and_cost
+				description: "Toxicity, content safety, token consumption, and cost breakdowns (Flex Credits / USD)"
 			go_to_drilldown: @utils.transition to @topic.drilldown
 				description: "Drill into a specific user, prompt, model, or feature"
 
@@ -341,9 +343,9 @@ topic cohorts:
 			back: @utils.transition to @topic.topic_selector
 				description: "Route to a different topic"
 
-topic safety_and_tokens:
-	label: "Safety and tokens"
-	description: "Answer questions about content safety (toxicity, top categories, recent flagged outputs) and token consumption breakdowns by user, model, prompt, or feature."
+topic safety_tokens_and_cost:
+	label: "Safety, tokens, and cost"
+	description: "Answer questions about content safety (toxicity, top categories, recent flagged outputs), token consumption, and Flex Credit / USD cost breakdowns — grouped by user, model, prompt, or feature. Cost answers prefer Wallet actuals when available and fall back to tier-rate estimates with a confidence badge."
 
 	actions:
 		get_safety_overview:
@@ -399,11 +401,42 @@ topic safety_and_tokens:
 				rowCount: integer
 					description: "Number of rows in rowsJson."
 
+		get_cost_breakdown:
+			description: "Returns Flex Credit and discounted USD cost grouped by model, user, prompt, or feature, with Wallet-first confidence badging (ACTUAL when wallet-sourced, otherwise the weakest tier-rate band)."
+			target: "apex://GetCostBreakdownAction"
+			inputs:
+				startDate: datetime
+					description: "Start of the analysis window. Leave blank for last 30 days."
+				endDate: datetime
+					description: "End of the analysis window. Leave blank for now."
+				groupBy: string
+					description: "One of: model, user, prompt, feature. Defaults to 'model'."
+			outputs:
+				groupBy: string
+					description: "Echoes the resolved group-by dimension."
+					is_displayable: True
+				totalFlexCredits: long
+					description: "Sum of Flex Credits across all rows."
+					is_displayable: True
+				totalUsd: currency
+					description: "Sum of discounted USD across all rows."
+					is_displayable: True
+				costConfidence: string
+					description: "ACTUAL when wallet-sourced; otherwise weakest band across rows (HIGH / ESTIMATED / FALLBACK / NOT_COSTED)."
+					is_displayable: True
+				costSource: string
+					description: "ACTUAL_WALLET when wallet-stamped, otherwise ESTIMATED_TIER."
+					is_displayable: True
+				rowsJson: string
+					description: "JSON array of cost rows: groupKey, groupLabel, flexCredits, discountedUsd, confidence, source."
+					is_displayable: True
+
 	reasoning:
 		instructions: |
 			Pick the action:
 			- "Toxic" / "safety" / "flagged" → get_safety_overview. Lead with the toxic rate; if > 1%, flag as high.
 			- "Tokens" / "token consumption" / "tokens by X" → get_token_consumption. Pass groupBy explicitly.
+			- "How much did this cost" / "cost breakdown" / "spend by model" / "Flex Credits by user" / "USD by prompt" → get_cost_breakdown. Pass groupBy explicitly. Always state costConfidence and costSource alongside totals — say "actual (Wallet)" for ACTUAL_WALLET, "estimated (tier rate)" otherwise.
 			Strip toxic content from the response — refer to flagged output IDs only when relevant.
 			If a tool returns "error":true in JSON, report the error message plainly.
 		actions:
@@ -413,6 +446,11 @@ topic safety_and_tokens:
 				with endDate = ...
 			pull_tokens: @actions.get_token_consumption
 				description: "Pull token consumption breakdown"
+				with startDate = ...
+				with endDate = ...
+				with groupBy = ...
+			pull_cost: @actions.get_cost_breakdown
+				description: "Pull Flex Credit / USD cost breakdown with Wallet-first confidence"
 				with startDate = ...
 				with endDate = ...
 				with groupBy = ...
