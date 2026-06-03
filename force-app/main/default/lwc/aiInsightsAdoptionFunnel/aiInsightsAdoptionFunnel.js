@@ -27,7 +27,10 @@ export default class AiInsightsAdoptionFunnel extends LightningElement {
     hasLoadedOnce = false;
     errorMessage;
 
-    tooltips = TOOLTIPS.overview;
+    // Funnel section heading + entitled-denominator caption read from the
+    // adoption namespace. Stage-level tooltips are stitched into each
+    // stage object below so the template can bind {stage.tooltip}.
+    tooltips = TOOLTIPS.adoption;
     fallbackTip = FM_Adoption_Fallback_Tip;
 
     connectedCallback() {
@@ -86,17 +89,35 @@ export default class AiInsightsAdoptionFunnel extends LightningElement {
         // the middle bar would be redundant — collapse to two stages and let
         // the admin tip explain why.
         const stages = [];
-        stages.push(this.makeStage('Active org users', total, widest, 'utility:user'));
+        stages.push(
+            this.makeStage('Active org users', total, widest, 'utility:user', null, TOOLTIPS.adoption.activeOrgUsers)
+        );
         if (!fallback) {
             stages.push(
-                this.makeStage('Entitled', entitled, widest, 'utility:identity', 'fm-funnel__bar_brand')
+                this.makeStage(
+                    'Entitled',
+                    entitled,
+                    widest,
+                    'utility:identity',
+                    'fm-funnel__bar_brand',
+                    TOOLTIPS.adoption.entitled
+                )
             );
         }
-        stages.push(this.makeStage('Active in window', active, widest, 'utility:check', 'fm-funnel__bar_success'));
+        stages.push(
+            this.makeStage(
+                'Active in window',
+                active,
+                widest,
+                'utility:check',
+                'fm-funnel__bar_success',
+                TOOLTIPS.adoption.activeInWindow
+            )
+        );
         return stages;
     }
 
-    makeStage(label, count, widest, icon, modifier) {
+    makeStage(label, count, widest, icon, modifier, tooltip) {
         const widthPct = widest > 0 ? Math.max(2, Math.round((count / widest) * 100)) : 0;
         return {
             key: label,
@@ -105,7 +126,8 @@ export default class AiInsightsAdoptionFunnel extends LightningElement {
             countDisplay: Number(count).toLocaleString(),
             barStyle: `width: ${widthPct}%`,
             icon,
-            barClass: `fm-funnel__bar ${modifier || ''}`.trim()
+            barClass: `fm-funnel__bar ${modifier || ''}`.trim(),
+            tooltip: tooltip || ''
         };
     }
 

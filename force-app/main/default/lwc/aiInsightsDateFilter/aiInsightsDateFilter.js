@@ -111,10 +111,21 @@ export default class AiInsightsDateFilter extends LightningElement {
         if (this._outsideHandler) return;
         this._outsideHandler = (event) => {
             const root = this.template.querySelector('.fm-date-pill-root');
-            if (root && !root.contains(event.target)) {
-                this.popoverOpen = false;
-                this.removeOutsideClickListener();
-            }
+            if (!root) return;
+            if (root.contains(event.target)) return;
+            // The lightning-input[type=date] calendar overlay is appended to
+            // document.body, so contains() above misses it. Without this guard,
+            // clicking the calendar icon inside the popover counts as "outside"
+            // and slams the popover shut before the user can pick a date.
+            const t = event.target;
+            if (t && t.closest && (
+                t.closest('.slds-datepicker') ||
+                t.closest('lightning-datepicker') ||
+                t.closest('lightning-calendar') ||
+                t.closest('input[type="date"]')
+            )) return;
+            this.popoverOpen = false;
+            this.removeOutsideClickListener();
         };
         // Defer attach so the click that opened the popover doesn't immediately close it.
         setTimeout(() => document.addEventListener('click', this._outsideHandler), 0);

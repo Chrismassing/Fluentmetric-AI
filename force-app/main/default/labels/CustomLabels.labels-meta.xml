@@ -496,4 +496,28 @@
         <shortDescription>Toast body shown after a successful rate-card apply</shortDescription>
         <value>Multipliers updated. Cost tiles will refresh on next reload.</value>
     </labels>
+    <labels>
+        <fullName>FM_Cost_Rate_Card_Heading</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Cost tab toolbar heading for the rate-card admin row</shortDescription>
+        <value>Rate card</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Rate_Card_Last_Updated</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Caption template; {0}=date, {1}=user name</shortDescription>
+        <value>Last updated {0} by {1}</value>
+    </labels>
+    <labels>
+        <fullName>FM_Cost_Rate_Card_Never_Uploaded</fullName>
+        <categories>FluentMetric AI</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Caption shown when no rate card has ever been applied</shortDescription>
+        <value>Using default Salesforce tier rates — no custom rate card uploaded yet.</value>
+    </labels>
 </CustomLabels>

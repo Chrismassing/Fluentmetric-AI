@@ -92,13 +92,19 @@
 
             <!-- ─────────── Per-user adoption (search + sortable table + cohort heatmap) ─────────── -->
             <section aria-labelledby="fm-user-adoption-heading" class="slds-m-bottom_large">
-                <h3 id="fm-user-adoption-heading" class="slds-text-heading_small slds-m-bottom_small">{labels.sectionUserAdoption}</h3>
+                <h3 id="fm-user-adoption-heading" class="slds-text-heading_small slds-m-bottom_small">
+                    {labels.sectionUserAdoption}
+                    <lightning-helptext content={tooltips.perUserAdoption} class="slds-m-left_xx-small"></lightning-helptext>
+                </h3>
                 <c-ai-insights-user-adoption></c-ai-insights-user-adoption>
             </section>
 
             <!-- ─────────── Feature adoption (breadth view) ─────────── -->
             <section aria-labelledby="fm-feature-adoption-heading">
-                <h3 id="fm-feature-adoption-heading" class="slds-text-heading_small slds-m-bottom_small">{labels.sectionFeatureAdoption}</h3>
+                <h3 id="fm-feature-adoption-heading" class="slds-text-heading_small slds-m-bottom_small">
+                    {labels.sectionFeatureAdoption}
+                    <lightning-helptext content={tooltips.featureAdoption} class="slds-m-left_xx-small"></lightning-helptext>
+                </h3>
                 <c-ai-insights-feature-adoption></c-ai-insights-feature-adoption>
             </section>
         </div>

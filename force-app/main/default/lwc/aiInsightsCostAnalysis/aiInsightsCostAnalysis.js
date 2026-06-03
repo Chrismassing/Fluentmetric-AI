@@ -1,10 +1,16 @@
 import { LightningElement, wire } from 'lwc';
+import { refreshApex } from '@salesforce/apex';
 import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
 import AI_INSIGHTS_DATE_RANGE from '@salesforce/messageChannel/AiInsightsDateRange__c';
 import AI_INSIGHTS_FILTERS from '@salesforce/messageChannel/AiInsightsFilters__c';
 import getOverview from '@salesforce/apex/AiInsightsController.getOverview';
 import getCostSettings from '@salesforce/apex/AiInsightsController.getCostSettings';
+import listRateCardUploads from '@salesforce/apex/AiInsightsController.listRateCardUploads';
+import { TOOLTIPS } from 'c/aiInsightsTooltips';
 import FM_Cost_Upload_Rate_Card_Button from '@salesforce/label/c.FM_Cost_Upload_Rate_Card_Button';
+import FM_Cost_Rate_Card_Heading from '@salesforce/label/c.FM_Cost_Rate_Card_Heading';
+import FM_Cost_Rate_Card_Last_Updated from '@salesforce/label/c.FM_Cost_Rate_Card_Last_Updated';
+import FM_Cost_Rate_Card_Never_Uploaded from '@salesforce/label/c.FM_Cost_Rate_Card_Never_Uploaded';
 
 /**
  * Cost Analysis (Estimated) panel.
@@ -50,8 +56,19 @@ export default class AiInsightsCostAnalysis extends LightningElement {
     rateCardModalOpen = false;
 
     labels = {
-        uploadRateCard: FM_Cost_Upload_Rate_Card_Button
+        uploadRateCard: FM_Cost_Upload_Rate_Card_Button,
+        rateCardHeading: FM_Cost_Rate_Card_Heading,
+        rateCardNeverUploaded: FM_Cost_Rate_Card_Never_Uploaded
     };
+
+    tooltips = TOOLTIPS.cost;
+
+    // Wired so we can refreshApex() after a successful upload.
+    rateCardUploadsResult;
+    @wire(listRateCardUploads, { limitN: 1 })
+    wiredRateCardUploads(result) {
+        this.rateCardUploadsResult = result;
+    }
 
     connectedCallback() {
         this.bannerDismissed = this.readBannerState();
@@ -208,8 +225,36 @@ export default class AiInsightsCostAnalysis extends LightningElement {
     }
 
     handleRateCardApplied() {
-        // Multipliers changed — re-fetch overview so tiles reflect them.
+        // Multipliers changed — re-fetch overview so tiles reflect them, and
+        // refresh the wired upload list so the toolbar's "Last updated" line
+        // re-renders with the new timestamp without a full page reload.
         this.loadOverview();
+        if (this.rateCardUploadsResult) {
+            refreshApex(this.rateCardUploadsResult);
+        }
+    }
+
+    get latestRateCardUpload() {
+        const rows = this.rateCardUploadsResult && this.rateCardUploadsResult.data;
+        if (!rows || !rows.length) return null;
+        // listRecent() returns DESC by CreatedDate — but only Applied rows
+        // count for "last updated", since reverted/parsed rows don't change
+        // the live multipliers.
+        return rows.find((r) => r.Status__c === 'Applied') || null;
+    }
+
+    get rateCardLastUpdatedDisplay() {
+        const row = this.latestRateCardUpload;
+        if (!row) return this.labels.rateCardNeverUploaded;
+        const when = row.CreatedDate
+            ? new Date(row.CreatedDate).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+              })
+            : '—';
+        const who = (row.AppliedBy__r && row.AppliedBy__r.Name) || 'admin';
+        return FM_Cost_Rate_Card_Last_Updated.replace('{0}', when).replace('{1}', who);
     }
 
     /**

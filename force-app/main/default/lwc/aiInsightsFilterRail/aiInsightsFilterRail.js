@@ -5,18 +5,6 @@ import AI_INSIGHTS_DATE_RANGE from '@salesforce/messageChannel/AiInsightsDateRan
 import getFilterFacets from '@salesforce/apex/AiInsightsController.getFilterFacets';
 import searchUsersInRange from '@salesforce/apex/AiInsightsController.searchUsersInRange';
 
-const PRESET_LAST_7 = 'LAST_7';
-const PRESET_LAST_30 = 'LAST_30';
-const PRESET_LAST_90 = 'LAST_90';
-const PRESET_CUSTOM = 'CUSTOM';
-
-const PRESET_LABELS = {
-    [PRESET_LAST_7]: 'Last 7 days',
-    [PRESET_LAST_30]: 'Last 30 days',
-    [PRESET_LAST_90]: 'Last 90 days',
-    [PRESET_CUSTOM]: 'Custom'
-};
-
 const PUBLISH_DEBOUNCE_MS = 200;
 const USER_SEARCH_DEBOUNCE_MS = 300;
 const USER_SEARCH_MIN_CHARS = 2;
@@ -24,35 +12,36 @@ const STORAGE_KEY = 'fluentmetric_filter_rail_v1';
 const STORAGE_KEY_EXPANDED = 'fluentmetric_filter_rail_expanded_by_tab_v1';
 const EXPAND_BY_DEFAULT_TAB = 'Explorer';
 
+const DEFAULT_RANGE_DAYS = 30;
+
 /**
  * Dynamic filter rail for the FluentMetric AI dashboards.
  *
  * Architecture:
- *   - Owns the single source of truth for the active criteria:
- *     { startDate, endDate, userIds, promptTemplateDevNames, models,
- *       providers, features, appTypes }
- *   - Publishes the full serialized criteria to AiInsightsFilters on any
- *     change (debounced). For backwards compatibility with the existing
- *     dashboards that still listen to AiInsightsDateRange, the rail also
- *     re-publishes the date portion there.
+ *   - Owns the single source of truth for the active dimension criteria:
+ *     { userIds, promptTemplateDevNames, models, providers, features, appTypes }.
+ *   - Date state lives on the top-of-page aiInsightsDateFilter pill — the rail
+ *     subscribes to AiInsightsDateRange and consumes startDate/endDate to
+ *     scope facet loading and user typeahead, but never publishes back. The
+ *     pill is the sole publisher on that channel.
+ *   - Publishes the full criteria (incl. the consumed date range) to
+ *     AiInsightsFilters on any change (debounced).
  *   - Hydrates combobox options from getFilterFacets(startDate, endDate) so
  *     every picker shows only values that actually occur in the window.
  *   - User filter uses searchUsersInRange typeahead (min 2 chars) because
  *     user cardinality is unbounded; other facets are precomputed.
  *
- * Persistence: last-used criteria saved to sessionStorage so a tab reload
- * doesn't wipe the filters. Keyed by a versioned constant so we can
- * invalidate cleanly when the criteria shape changes.
+ * Persistence: dimension criteria saved to sessionStorage so a tab reload
+ * doesn't wipe the filters. Date is intentionally not persisted here — the
+ * pill seeds its own default on every reload.
  */
 export default class AiInsightsFilterRail extends LightningElement {
     @wire(MessageContext)
     messageContext;
 
-    // ── Date state ─────────────────────────────────────────────────
-    preset = PRESET_LAST_30;
-    customStart;
-    customEnd;
-    dateError;
+    // ── Date state (consumed from the pill via LMS) ────────────────
+    activeStartDate;
+    activeEndDate;
 
     // ── Dimension state (arrays of selected values) ────────────────
     selectedUserIds = [];
@@ -78,23 +67,18 @@ export default class AiInsightsFilterRail extends LightningElement {
 
     // ── Section collapsed state ────────────────────────────────────
     collapsed = {
-        date: true,
         who: true,
         what: true
     };
 
     // ── Top-level rail expand/collapse state ───────────────────────
-    // Tracks whether the rail is rendered full-width or collapsed to a
-    // narrow strip. Per-tab decisions live in sessionStorage keyed by
-    // STORAGE_KEY_EXPANDED so a user's choice on one tab doesn't leak
-    // to others. Default rule: Explorer expands, every other tab
-    // collapses — because only Explorer consumes criteria today.
     expanded = false;
     _activeTab;
     _userExpandedByTab = {};
 
     // ── Timers / subscriptions ─────────────────────────────────────
-    subscription;
+    filtersSubscription;
+    dateSubscription;
     publishTimer;
     userSearchTimer;
     facetsLoadedForRange;
@@ -111,20 +95,30 @@ export default class AiInsightsFilterRail extends LightningElement {
     connectedCallback() {
         this.restoreFromStorage();
         this.restoreExpandedFromStorage();
-        this.initializeDates();
+        this.seedDefaultRange();
         this.resolveExpandedForTab();
-        this.subscription = subscribe(this.messageContext, AI_INSIGHTS_FILTERS, (msg) =>
+        this.filtersSubscription = subscribe(this.messageContext, AI_INSIGHTS_FILTERS, (msg) =>
             this.handleExternalCriteria(msg)
         );
-        // Kick off first publish + facet load with the seeded range.
+        this.dateSubscription = subscribe(this.messageContext, AI_INSIGHTS_DATE_RANGE, (msg) =>
+            this.handleExternalDateRange(msg)
+        );
+        // Kick off first publish + facet load with the seeded range. The pill
+        // typically publishes its default within the same tick, which then
+        // re-triggers loadFacets() with the corrected window — that re-fetch
+        // is debounced by facetsLoadedForRange so it's cheap.
         this.publishCriteria({ immediate: true });
         this.loadFacets();
     }
 
     disconnectedCallback() {
-        if (this.subscription) {
-            unsubscribe(this.subscription);
-            this.subscription = undefined;
+        if (this.filtersSubscription) {
+            unsubscribe(this.filtersSubscription);
+            this.filtersSubscription = undefined;
+        }
+        if (this.dateSubscription) {
+            unsubscribe(this.dateSubscription);
+            this.dateSubscription = undefined;
         }
         if (this.publishTimer) {
             clearTimeout(this.publishTimer);
@@ -136,99 +130,41 @@ export default class AiInsightsFilterRail extends LightningElement {
 
     // ─────────────────────────── Dates ───────────────────────────
 
-    initializeDates() {
-        // If we restored a custom range, leave it. Otherwise seed the defaults
-        // so switching to Custom starts with a sensible window.
-        if (!this.customStart || !this.customEnd) {
-            const { startDate, endDate } = this.computeRange(PRESET_LAST_30);
-            this.customStart = this.toDateInputValue(startDate);
-            this.customEnd = this.toDateInputValue(endDate);
-        }
-    }
-
-    get presetOptions() {
-        return [
-            { label: PRESET_LABELS[PRESET_LAST_7], value: PRESET_LAST_7 },
-            { label: PRESET_LABELS[PRESET_LAST_30], value: PRESET_LAST_30 },
-            { label: PRESET_LABELS[PRESET_LAST_90], value: PRESET_LAST_90 },
-            { label: PRESET_LABELS[PRESET_CUSTOM], value: PRESET_CUSTOM }
-        ];
-    }
-
-    get isCustomRange() {
-        return this.preset === PRESET_CUSTOM;
-    }
-
-    handlePresetChange(event) {
-        this.preset = event.detail.value;
-        this.dateError = undefined;
-        if (this.preset !== PRESET_CUSTOM) {
-            this.publishCriteria();
-            this.loadFacets();
-        }
-    }
-
-    handleCustomStartChange(event) {
-        this.customStart = event.detail.value;
-        this.maybeApplyCustomRange();
-    }
-
-    handleCustomEndChange(event) {
-        this.customEnd = event.detail.value;
-        this.maybeApplyCustomRange();
-    }
-
-    maybeApplyCustomRange() {
-        if (!this.customStart || !this.customEnd) {
-            return;
-        }
-        const start = new Date(this.customStart);
-        const end = new Date(this.customEnd);
-        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-            this.dateError = 'Enter valid start and end dates.';
-            return;
-        }
-        if (start > end) {
-            this.dateError = 'Start date must be on or before end date.';
-            return;
-        }
-        this.dateError = undefined;
-        this.publishCriteria();
-        this.loadFacets();
-    }
-
-    computeRange(preset) {
+    seedDefaultRange() {
+        // Seed a 30-day window so facet loading works on first paint, before
+        // the pill's first publish lands. The pill will overwrite this within
+        // the same tick via handleExternalDateRange.
         const end = new Date();
         const start = new Date();
-        let days = 30;
-        if (preset === PRESET_LAST_7) days = 7;
-        else if (preset === PRESET_LAST_90) days = 90;
-        start.setDate(start.getDate() - days);
-        return { startDate: start, endDate: end };
+        start.setDate(start.getDate() - DEFAULT_RANGE_DAYS);
+        this.activeStartDate = start;
+        this.activeEndDate = end;
+    }
+
+    handleExternalDateRange(msg) {
+        if (!msg || !msg.startDate || !msg.endDate) return;
+        const start = new Date(msg.startDate);
+        const end = new Date(msg.endDate);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+        this.activeStartDate = start;
+        this.activeEndDate = end;
+        // Re-scope facet options + republish criteria so the date tag on
+        // AiInsightsFilters mirrors the new pill window.
+        this.loadFacets();
+        this.publishCriteria();
     }
 
     computeActiveRange() {
-        if (this.preset === PRESET_CUSTOM && this.customStart && this.customEnd) {
-            const start = new Date(this.customStart);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(this.customEnd);
-            end.setHours(23, 59, 59, 999);
-            return { startDate: start, endDate: end };
-        }
-        return this.computeRange(this.preset);
-    }
-
-    toDateInputValue(date) {
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        return { startDate: this.activeStartDate, endDate: this.activeEndDate };
     }
 
     // ─────────────────────────── Facets ───────────────────────────
 
     async loadFacets() {
         const range = this.computeActiveRange();
-        // Key the load by the computed ISO range so rapid preset flips don't
-        // double-fetch. If the user leaves the rail on the same preset the
+        if (!range.startDate || !range.endDate) return;
+        // Key the load by the computed ISO range so rapid pill flips don't
+        // double-fetch. If the user leaves the rail on the same window the
         // facet list doesn't change — no need to re-call.
         const key = `${range.startDate.toISOString()}|${range.endDate.toISOString()}`;
         if (this.facetsLoadedForRange === key) return;
@@ -345,6 +281,7 @@ export default class AiInsightsFilterRail extends LightningElement {
 
     async runUserSearch() {
         const range = this.computeActiveRange();
+        if (!range.startDate || !range.endDate) return;
         this.userSearchLoading = true;
         try {
             const results = await searchUsersInRange({
@@ -440,13 +377,10 @@ export default class AiInsightsFilterRail extends LightningElement {
 
     resolveExpandedForTab() {
         const tab = this._activeTab;
-        // User's explicit choice on this tab wins over the default.
         if (tab && Object.prototype.hasOwnProperty.call(this._userExpandedByTab, tab)) {
             this.expanded = !!this._userExpandedByTab[tab];
             return;
         }
-        // No tab context means the rail is rendered in its dedicated spot
-        // (Explorer-only). Default to expanded.
         this.expanded = !tab || tab === EXPAND_BY_DEFAULT_TAB;
     }
 
@@ -468,8 +402,7 @@ export default class AiInsightsFilterRail extends LightningElement {
         try {
             sessionStorage.setItem(STORAGE_KEY_EXPANDED, JSON.stringify(this._userExpandedByTab));
         } catch (err) {
-            // Best-effort — sessionStorage can throw in private-browsing or
-            // iframe contexts; the rail still functions without persistence.
+            // Best-effort.
         }
     }
 
@@ -520,9 +453,6 @@ export default class AiInsightsFilterRail extends LightningElement {
         return `${n} ${n === 1 ? 'filter' : 'filters'} active`;
     }
 
-    get sectionDateClass() {
-        return this.collapsed.date ? 'fm-section fm-section--collapsed' : 'fm-section';
-    }
     get sectionWhoClass() {
         return this.collapsed.who ? 'fm-section fm-section--collapsed' : 'fm-section';
     }
@@ -530,9 +460,6 @@ export default class AiInsightsFilterRail extends LightningElement {
         return this.collapsed.what ? 'fm-section fm-section--collapsed' : 'fm-section';
     }
 
-    get sectionDateExpanded() {
-        return !this.collapsed.date;
-    }
     get sectionWhoExpanded() {
         return !this.collapsed.who;
     }
@@ -547,6 +474,7 @@ export default class AiInsightsFilterRail extends LightningElement {
         if (this.publishTimer) clearTimeout(this.publishTimer);
         const fire = () => {
             const range = this.computeActiveRange();
+            if (!range.startDate || !range.endDate) return;
             const startIso = range.startDate.toISOString();
             const endIso = range.endDate.toISOString();
             const criteria = {
@@ -562,16 +490,7 @@ export default class AiInsightsFilterRail extends LightningElement {
             publish(this.messageContext, AI_INSIGHTS_FILTERS, {
                 criteriaJson: JSON.stringify(criteria),
                 startDate: startIso,
-                endDate: endIso,
-                presetLabel: PRESET_LABELS[this.preset]
-            });
-            // Keep legacy subscribers in sync — every existing dashboard still
-            // listens on AiInsightsDateRange. Drop this publish once every
-            // dashboard has migrated to AiInsightsFilters.
-            publish(this.messageContext, AI_INSIGHTS_DATE_RANGE, {
-                startDate: startIso,
-                endDate: endIso,
-                presetLabel: PRESET_LABELS[this.preset]
+                endDate: endIso
             });
             this.persistToStorage(criteria);
         };
@@ -589,9 +508,6 @@ export default class AiInsightsFilterRail extends LightningElement {
         } catch (err) {
             return;
         }
-        // Avoid an echo loop: only hydrate state from external publishes that
-        // materially differ from our current state. Cheap JSON compare is
-        // enough here since both sides stringify.
         const current = {
             userIds: this.selectedUserIds,
             promptTemplateDevNames: this.selectedPromptTemplateDevNames,
@@ -624,16 +540,12 @@ export default class AiInsightsFilterRail extends LightningElement {
             sessionStorage.setItem(
                 STORAGE_KEY,
                 JSON.stringify({
-                    preset: this.preset,
-                    customStart: this.customStart,
-                    customEnd: this.customEnd,
                     ...criteria,
                     userLabels: this.selectedUserLabels
                 })
             );
         } catch (err) {
-            // sessionStorage can throw in some iframes / private browsing —
-            // persistence is best-effort.
+            // Best-effort.
         }
     }
 
@@ -642,9 +554,6 @@ export default class AiInsightsFilterRail extends LightningElement {
             const raw = sessionStorage.getItem(STORAGE_KEY);
             if (!raw) return;
             const parsed = JSON.parse(raw);
-            if (parsed.preset) this.preset = parsed.preset;
-            if (parsed.customStart) this.customStart = parsed.customStart;
-            if (parsed.customEnd) this.customEnd = parsed.customEnd;
             this.selectedUserIds = parsed.userIds || [];
             this.selectedPromptTemplateDevNames = parsed.promptTemplateDevNames || [];
             this.selectedModels = parsed.models || [];

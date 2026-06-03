@@ -11,6 +11,7 @@ import FM_Adoption_Tier_Top1 from '@salesforce/label/c.FM_Adoption_Tier_Top1';
 import FM_Adoption_Tier_Top10 from '@salesforce/label/c.FM_Adoption_Tier_Top10';
 
 const TT = TOOLTIPS.userAdoption;
+const COHORT_TT = TOOLTIPS.adoption.cohortRetention;
 
 const INITIAL_PAGE_SIZE = 25;
 const PAGE_STEP = 25;
@@ -48,6 +49,8 @@ export default class AiInsightsUserAdoption extends LightningElement {
     isLoading = false;
     hasLoadedOnce = false;
     errorMessage;
+
+    cohortTooltip = COHORT_TT;
 
     // helpText on each column renders a little info icon in the header with
     // the tooltip content on hover — native lightning-datatable feature,

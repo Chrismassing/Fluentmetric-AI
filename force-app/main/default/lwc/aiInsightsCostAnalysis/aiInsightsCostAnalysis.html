@@ -42,15 +42,7 @@
                             </p>
                         </div>
                         <div class="slds-col slds-no-flex slds-grid slds-grid_vertical-align-center">
-                            <template lwc:if={canUploadRateCard}>
-                                <lightning-button
-                                    label={labels.uploadRateCard}
-                                    variant="brand"
-                                    onclick={handleOpenRateCardUpload}>
-                                </lightning-button>
-                            </template>
                             <lightning-button-icon
-                                class="slds-m-left_x-small"
                                 icon-name="utility:close"
                                 variant="bare"
                                 alternative-text="Dismiss estimates notice"
@@ -82,6 +74,24 @@
                 <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
                     <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
                     <span class="slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template lwc:if={canUploadRateCard}>
+                <div class="fm-rate-card-row slds-grid slds-grid_vertical-align-center slds-grid_align-spread slds-m-bottom_medium">
+                    <div class="slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                        <lightning-icon icon-name="utility:price_book" size="x-small" alternative-text="Rate card" class="slds-m-right_x-small"></lightning-icon>
+                        <span class="slds-text-title">{labels.rateCardHeading}</span>
+                        <lightning-helptext content={tooltips.rateCardSettings} class="slds-m-left_xx-small"></lightning-helptext>
+                        <span class="slds-text-body_small slds-text-color_weak slds-m-left_small slds-truncate" title={rateCardLastUpdatedDisplay}>
+                            {rateCardLastUpdatedDisplay}
+                        </span>
+                    </div>
+                    <lightning-button
+                        label={labels.uploadRateCard}
+                        variant="neutral"
+                        onclick={handleOpenRateCardUpload}>
+                    </lightning-button>
                 </div>
             </template>
 

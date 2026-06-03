@@ -49,47 +49,12 @@
         <!-- ── Section content (expanded rail only) ── -->
         <template lwc:if={expanded}>
 
-        <!-- ──────────── Date section ──────────── -->
-        <div class={sectionDateClass}>
-            <button
-                type="button"
-                class="fm-section__title slds-button slds-button_reset"
-                data-section="date"
-                aria-expanded={sectionDateExpanded}
-                onclick={handleToggleSection}>
-                <span class="slds-text-title_caps">Date</span>
-                <span class="fm-section__chevron">
-                    <lightning-icon icon-name="utility:chevrondown" size="xx-small"></lightning-icon>
-                </span>
-            </button>
-            <div class="fm-section__body">
-                <lightning-combobox
-                    label="Range preset"
-                    value={preset}
-                    options={presetOptions}
-                    onchange={handlePresetChange}>
-                </lightning-combobox>
-                <template lwc:if={isCustomRange}>
-                    <div class="slds-m-top_x-small">
-                        <lightning-input
-                            type="date"
-                            label="Start date"
-                            value={customStart}
-                            onchange={handleCustomStartChange}>
-                        </lightning-input>
-                        <lightning-input
-                            type="date"
-                            label="End date"
-                            value={customEnd}
-                            onchange={handleCustomEndChange}>
-                        </lightning-input>
-                    </div>
-                </template>
-                <template lwc:if={dateError}>
-                    <p class="slds-text-color_error slds-m-top_x-small">{dateError}</p>
-                </template>
-            </div>
-        </div>
+        <!--
+            Date filter intentionally omitted here. The top-of-page
+            aiInsightsDateFilter pill is the sole publisher on the
+            AiInsightsDateRange channel; this rail subscribes and uses the
+            consumed window to scope the WHO/WHAT facet options below.
+        -->
 
         <!-- ──────────── Who section ──────────── -->
         <div class={sectionWhoClass}>

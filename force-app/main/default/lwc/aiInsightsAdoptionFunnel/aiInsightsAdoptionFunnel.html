@@ -8,6 +8,7 @@
                 <div class="slds-media__body">
                     <h2 class="slds-card__header-title">
                         <span class="slds-text-heading_small">Adoption funnel</span>
+                        <lightning-helptext content={tooltips.funnelStage} class="slds-m-left_xx-small"></lightning-helptext>
                     </h2>
                     <p class="slds-text-body_small slds-text-color_weak">
                         Active org users &rarr; Entitled &rarr; Active in window
@@ -18,6 +19,7 @@
                         <span class="slds-badge slds-badge_lightest" title={tooltips.entitledDenominator}>
                             Adoption&nbsp;{adoptionRateDisplay}
                         </span>
+                        <lightning-helptext content={tooltips.entitledDenominator} class="slds-m-left_xx-small"></lightning-helptext>
                     </div>
                 </template>
             </div>
@@ -54,6 +56,9 @@
                             <div class="fm-funnel__label">
                                 <lightning-icon icon-name={stage.icon} size="x-small" alternative-text={stage.label}></lightning-icon>
                                 <span class="slds-m-left_x-small">{stage.label}</span>
+                                <template lwc:if={stage.tooltip}>
+                                    <lightning-helptext content={stage.tooltip} class="slds-m-left_xx-small"></lightning-helptext>
+                                </template>
                             </div>
                             <div class="fm-funnel__track">
                                 <div class={stage.barClass} style={stage.barStyle}></div>
@@ -73,6 +78,7 @@
                 <template lwc:if={hasConfiguredList}>
                     <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
                         Entitled denominator: {configuredList}
+                        <lightning-helptext content={tooltips.entitledDenominator} class="slds-m-left_xx-small"></lightning-helptext>
                     </p>
                 </template>
             </template>

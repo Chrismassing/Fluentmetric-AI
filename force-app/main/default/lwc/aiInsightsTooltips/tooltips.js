@@ -237,7 +237,21 @@ export const TOOLTIPS = {
         funnelStage:
             'Each funnel stage is the count of users that survived the previous gate: Active org users (anyone licensed) → Entitled (assigned to the FluentMetric_AI_Entitled_User permission set) → Active in window (made at least one request in the selected range).',
         contributorRank:
-            'Top contributors are the highest-volume users in the date range. Toggle between Tokens (sum of input + output) and Requests (count of GenAIGatewayRequest__dlm rows) — the bar lengths normalize against the leader so the ranking is visually obvious.'
+            'Top contributors are the highest-volume users in the date range. Toggle between Tokens (sum of input + output) and Requests (count of GenAIGatewayRequest__dlm rows) — the bar lengths normalize against the leader so the ranking is visually obvious.',
+        activeOrgUsers:
+            'Distinct active users in this org (User.IsActive = true). The ceiling for who could ever use Einstein Generative AI — independent of permission-set entitlement or actual activity.',
+        entitled:
+            'Users assigned to the FluentMetric_AI_Entitled_User permission set — the people you expect to be using AI. Adjust assignments to sharpen the adoption denominator. When the permset has no assignees, the funnel falls back to total active org users.',
+        activeInWindow:
+            'Users who triggered at least one Einstein Generative AI request inside the selected date range. The realized layer of the funnel — DISTINCT userId__c on GenAIGatewayRequest__dlm filtered by timestamp__c.',
+        entitledDenominator:
+            'Adoption rate uses an entitled-user denominator: active users in the range divided by users assigned to the FluentMetric_AI_Entitled_User permission set. When that permset has no assignees, the denominator falls back to total active org users so the metric still renders.',
+        perUserAdoption:
+            'Per-user activity table for the selected range. Click a row to drill into recent requests, prompt mix, and feedback ratio for that user. Sort by any column.',
+        cohortRetention:
+            'Weekly retention heatmap. Each cell shows the share of week-N users who came back in week-N+k. Reads top-left to bottom-right; darker cells are stronger retention.',
+        featureAdoption:
+            'Breadth view: which Einstein Generative AI features (Sales Email, Agentforce, Prompt Builder, etc.) are getting traction in the selected range. Sourced from GenAIGatewayRequest__dlm.featureName__c grouped by feature.'
     },
 
     // ─── Cost tab container ──────────────────────────────────────────────

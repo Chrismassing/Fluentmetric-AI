@@ -1,3 +1,10 @@
 .fm-cost-banner {
     border-left: 3px solid var(--slds-g-color-warning-base-40, #fe9339);
 }
+
+.fm-rate-card-row {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--slds-g-color-border-base-2, #e5e5e5);
+    border-radius: 0.25rem;
+    background: var(--slds-g-color-neutral-base-95, #fafaf9);
+}
