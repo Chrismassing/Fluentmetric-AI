@@ -7,7 +7,7 @@ FluentMetric AI ships as **two Unlocked Packages (2GP)** — one per edition —
 ## Why 2GP
 
 - **One-click install URL per edition** (`/packaging/installPackage.apexp?p0=<04t...>`) — no CLI required for admins.
-- **Versioned upgrades** — `1.0.0` → `1.1.0` ships through the same install URL.
+- **Versioned upgrades** — `1.0.0` → `1.1.2` ships through the same install URL.
 - **Reversible** — admins can uninstall via Setup → Installed Packages.
 - **No new infrastructure** — DevHub `cvk-dev` already provisioned.
 
