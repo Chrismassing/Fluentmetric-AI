@@ -19,7 +19,7 @@
                 </componentInstanceProperties>
                 <componentInstanceProperties>
                     <name>windowDays</name>
-                    <value>30</value>
+                    <value>90</value>
                 </componentInstanceProperties>
             </componentInstance>
         </itemInstances>

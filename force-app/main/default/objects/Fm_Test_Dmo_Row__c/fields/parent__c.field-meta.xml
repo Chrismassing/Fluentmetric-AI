@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>parent__c</fullName>
+    <description>Test stand-in for the GenAI DMO parent__c business-key field (links Quality and Category rows up the chain).</description>
+    <externalId>false</externalId>
+    <label>parent</label>
+    <length>64</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

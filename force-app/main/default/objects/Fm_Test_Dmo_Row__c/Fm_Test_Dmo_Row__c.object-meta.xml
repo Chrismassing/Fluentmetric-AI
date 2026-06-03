@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Internal test-only stand-in. Carries the camelCase field shape the GenAI Audit DMOs use (userId__c, gatewayRequestId__c, etc.) so AiInsightsTestUtil can fabricate a non-null SObject with `r.get('userId__c')` semantics in package-validation scratch orgs where Data Cloud DMOs aren't provisioned. NOT for customer use; the FluentMetric_AI_User permission set deliberately omits this object.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableLicensing>false</enableLicensing>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>FM Test DMO Row</label>
+    <nameField>
+        <displayFormat>FMT-{0000}</displayFormat>
+        <label>Row Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>FM Test DMO Rows</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>Private</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

@@ -351,9 +351,28 @@ public class AiInsightsTestUtil {
 
     private static SObject deserialize(String typeName, Map<String, Object> body) {
         Type t = Type.forName(typeName);
-        if (t == null) {
+        if (t != null) {
+            return (SObject) System.JSON.deserialize(System.JSON.serialize(body), t);
+        }
+        // Fallback for the package-validation scratch org: Data Cloud DMOs
+        // are not provisioned, so Type.forName returns null. We deserialize
+        // into Fm_Test_Dmo_Row__c, which carries the camelCase field shape
+        // (userId__c, gatewayRequestId__c, etc.) the service code reads via
+        // `r.get('field__c')`. The `attributes.type` is rewritten so the
+        // shadow record's SObjectType resolves cleanly.
+        return deserializeIntoShadow(body);
+    }
+
+    private static SObject deserializeIntoShadow(Map<String, Object> body) {
+        Type shadow = Type.forName('Fm_Test_Dmo_Row__c');
+        if (shadow == null) {
             return null;
         }
-        return (SObject) System.JSON.deserialize(System.JSON.serialize(body), t);
+        Map<String, Object> rewritten = new Map<String, Object>();
+        if (body != null) {
+            rewritten.putAll(body);
+        }
+        rewritten.put('attributes', new Map<String, String>{ 'type' => 'Fm_Test_Dmo_Row__c' });
+        return (SObject) System.JSON.deserialize(System.JSON.serialize(rewritten), shadow);
     }
 }

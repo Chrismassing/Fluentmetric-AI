@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>responseText__c</fullName>
+    <description>Test stand-in for GenAIGeneration__dlm.responseText__c.</description>
+    <externalId>false</externalId>
+    <label>responseText</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <length>32768</length>
+    <visibleLines>4</visibleLines>
+</CustomField>

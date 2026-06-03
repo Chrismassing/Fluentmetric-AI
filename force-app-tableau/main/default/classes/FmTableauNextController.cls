@@ -37,15 +37,29 @@ public with sharing class FmTableauNextController {
     }
 
     /**
-     * Returns the Tableau Next workspace deep-link URL the launcher button
-     * navigates to. Reads from Custom Labels so admins can swap the workspace
-     * without a code deploy.
+     * Returns the deep-link URL the launcher button navigates to. Resolves
+     * to the AnalyticsWorkspace record-page URL so the user lands directly
+     * on the FluentMetric_AI workspace's dashboard list. Falls back to the
+     * generic Tableau Next app tab if the workspace is missing (e.g. the
+     * customer hasn't deployed it yet).
      */
     @AuraEnabled(cacheable=true)
     public static Map<String, String> getLauncherTarget() {
+        String path;
+        List<AnalyticsWorkspace> ws = [
+            SELECT Id
+            FROM AnalyticsWorkspace
+            WHERE DeveloperName = 'FluentMetric_AI_Workspace'
+            LIMIT 1
+        ];
+        if (!ws.isEmpty()) {
+            path = '/lightning/r/AnalyticsWorkspace/' + ws[0].Id + '/view';
+        } else {
+            path = System.Label.FM_TBL_Launcher_Workspace_Path;
+        }
         return new Map<String, String>{
             'workspaceLabel' => System.Label.FM_TBL_Launcher_Workspace_Label,
-            'workspacePath' => System.Label.FM_TBL_Launcher_Workspace_Path
+            'workspacePath' => path
         };
     }
 }

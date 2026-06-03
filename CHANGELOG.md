@@ -17,6 +17,64 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ---
 
+## [1.1.1] - 2026-06-02
+
+**Install URL:**
+- **Lightning Edition (promoted, production-installable):** https://login.salesforce.com/packaging/installPackage.apexp?p0=04tHn000001NtnlIAC
+- **Tableau Next Edition:** Deferred to a later release.
+- For sandboxes, replace `login` with `test`.
+
+**Promotion status:** Non-beta — installs cleanly into Production, Sandbox,
+and Developer Edition orgs. v1.1.1-1 cut with `--code-coverage` against
+DevHub `cvk-dev`; package coverage 81% with all 17 previously-failing
+fixture tests now passing in the validation scratch org.
+
+**Upgrade notes:** No customer-visible changes from v1.1.0. The rate-card
+upload flow, schema, and permission set are byte-for-byte identical. The
+test-debt fix is a single new test-only object plus a 12-line fallback in
+`AiInsightsTestUtil.deserialize`. Permission Set assignments and Custom
+Setting values are preserved through upgrade.
+
+### Fixed
+
+- **17 fixture-dependent tests** that were NPE-ing in package-validation
+  scratch orgs (`AiInsightsServiceTest` × 4, `AiInsightsServiceCoverageTest`
+  × 11, `AiInsightsTestUtilSmokeTest` × 2). Root cause: the validation org
+  has no Data Cloud DMOs provisioned, so `Type.forName('GenAIGatewayRequest__dlm')`
+  returned null and the DMO fixture builders produced null SObjects, which
+  then NPE'd in `AiInsightsService.collectBusinessKeys` and friends. Fix is
+  in [v1_test_debt_path_a](Documents/Developer/v1.1-test-debt.md) Path A
+  category — additive, no production-code changes.
+
+### Added
+
+- **`Fm_Test_Dmo_Row__c`** custom object — internal test stand-in carrying
+  the camelCase field shape the GenAI Audit DMOs use (`userId__c`,
+  `gatewayRequestId__c`, `model__c`, `feature__c`, `timestamp__c`,
+  `promptTokens__c`, `completionTokens__c`, `totalTokens__c`, `prompt__c`,
+  `promptTemplateDevName__c`, `feedback__c`, `action__c`,
+  `generationRequestId__c`, `generationResponseId__c`, `generationId__c`,
+  `responseText__c`, `isToxicityDetected__c`, `category__c`, `value__c`,
+  `parent__c`). The `FluentMetric_AI_User` permission set deliberately
+  omits this object — customers will see it in Object Manager but no
+  user-facing surface ever queries or writes it.
+- **`AiInsightsTestUtil.deserializeIntoShadow`** fallback — when
+  `Type.forName(typeName)` returns null (no DMOs), the helper rewrites
+  `attributes.type` to `Fm_Test_Dmo_Row__c` and deserializes into the
+  shadow SObject. The service's `r.get('userId__c')` etc. semantics are
+  preserved unchanged. On orgs with DMOs (e.g. `cvk-dev`), the live DMO
+  type still resolves first and the fallback is never hit.
+
+### Notes
+
+- No production Apex changed. `AiInsightsService`, `AiInsightsDAO`,
+  `AiInsightsController`, and the LWC layer are byte-for-byte identical
+  to v1.1.0.
+- This unblocks the v1.1.0 production-install limitation — admins can now
+  install v1.1.1 directly into a Production org via the URL above.
+
+---
+
 ## [1.1.0] - 2026-06-01
 
 **Install URL:**

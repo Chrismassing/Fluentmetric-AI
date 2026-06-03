@@ -54,7 +54,7 @@
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>Lightning navigation path to the Tableau Next workspace home</shortDescription>
-        <value>/lightning/n/standard__TableauEinstein</value>
+        <value>/lightning/n/TableauEinstein</value>
     </labels>
     <labels>
         <fullName>FM_TBL_Empty_Workspace</fullName>
