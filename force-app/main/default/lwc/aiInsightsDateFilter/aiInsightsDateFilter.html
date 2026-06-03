@@ -36,7 +36,9 @@
             <section
                 class="slds-popover slds-popover_panel slds-nubbin_top-right fm-date-popover"
                 role="dialog"
-                aria-label="Date range options">
+                aria-label="Date range options"
+                onclick={handlePopoverClick}
+                onmousedown={handlePopoverClick}>
                 <header class="slds-popover__header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                     <h3 class="slds-text-heading_small">Date range</h3>
                     <lightning-button-icon

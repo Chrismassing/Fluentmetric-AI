@@ -4,9 +4,9 @@
       "path": "force-app",
       "default": true,
       "package": "FluentMetric AI",
-      "versionName": "Version 1.1.1",
-      "versionNumber": "1.1.1.NEXT",
-      "versionDescription": "Promote-to-non-beta: shadow SObject for DMO-less validation orgs"
+      "versionName": "Version 1.1.2",
+      "versionNumber": "1.1.2.NEXT",
+      "versionDescription": "Date-range pill: keep Custom popover open under Lightning Web Security closed shadow DOM"
     },
     {
       "path": "force-app-tableau",

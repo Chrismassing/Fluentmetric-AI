@@ -17,6 +17,36 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ---
 
+## [1.1.2] - 2026-06-03
+
+**Install URL:**
+- **Lightning Edition:** _pending package cut — appended after `sf package version create`._
+- **Tableau Next Edition:** Deferred to a later release.
+- For sandboxes, replace `login` with `test`.
+
+### Fixed
+
+- **Date-range pill — Custom popover slammed shut on every click.** The
+  outside-click handler used `Element.contains` and `Element.closest`,
+  which don't pierce shadow boundaries. Under Lightning Web Security
+  (closed shadow DOM), every click inside `lightning-input[type=date]`
+  retargets at the document level to the date-filter host, so the
+  handler couldn't tell inside-popover clicks from outside ones and
+  closed the popover before the user could enter a From or To date.
+  Fix: catch clicks at the popover `<section>` element with a
+  template-bound `onclick` / `onmousedown` that calls
+  `event.stopPropagation()`, killing event bubbling _before_ the
+  event crosses the shadow boundary. The document handler now only
+  needs to exempt Lightning datepicker / combobox dropdowns that are
+  portaled to `document.body`.
+
+### Notes
+
+- LWC-only fix. No Apex, schema, or permission changes.
+- Tested in Chrome on `cvk-dev` with the v1.1.1 deployed package.
+
+---
+
 ## [1.1.1] - 2026-06-02
 
 **Install URL:**

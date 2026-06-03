@@ -107,22 +107,37 @@ export default class AiInsightsDateFilter extends LightningElement {
         this.removeOutsideClickListener();
     }
 
+    /**
+     * Stop clicks inside the popover from bubbling up to the document-level
+     * outside-click handler. Under Lightning Web Security (closed shadow DOM),
+     * a document listener can't see what was clicked — composedPath() stops
+     * at the host and event.target is retargeted to <c-ai-insights-date-filter>.
+     * Catching the click here, INSIDE the shadow, is the only reliable signal
+     * that the click is "inside the popover".
+     *
+     * Clicks on Lightning datepicker / combobox overlays portaled to
+     * document.body are handled separately — see addOutsideClickListener.
+     */
+    handlePopoverClick(event) {
+        event.stopPropagation();
+    }
+
     addOutsideClickListener() {
         if (this._outsideHandler) return;
         this._outsideHandler = (event) => {
-            const root = this.template.querySelector('.fm-date-pill-root');
-            if (!root) return;
-            if (root.contains(event.target)) return;
-            // The lightning-input[type=date] calendar overlay is appended to
-            // document.body, so contains() above misses it. Without this guard,
-            // clicking the calendar icon inside the popover counts as "outside"
-            // and slams the popover shut before the user can pick a date.
+            // Clicks inside the popover never reach this handler — they're
+            // stopped by handlePopoverClick. Anything we DO see here came from
+            // outside our shadow root. The remaining job: don't close when the
+            // user clicks a Lightning datepicker / combobox dropdown that was
+            // portaled to document.body (light-DOM, so we can inspect it).
             const t = event.target;
             if (t && t.closest && (
                 t.closest('.slds-datepicker') ||
+                t.closest('.slds-dropdown') ||
+                t.closest('.slds-listbox') ||
                 t.closest('lightning-datepicker') ||
                 t.closest('lightning-calendar') ||
-                t.closest('input[type="date"]')
+                t.closest('lightning-base-combobox')
             )) return;
             this.popoverOpen = false;
             this.removeOutsideClickListener();
