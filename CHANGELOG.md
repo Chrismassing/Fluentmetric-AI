@@ -20,9 +20,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 ## [1.1.2] - 2026-06-03
 
 **Install URL:**
-- **Lightning Edition:** _pending package cut — appended after `sf package version create`._
+- **Lightning Edition (promoted, production-installable):** https://login.salesforce.com/packaging/installPackage.apexp?p0=04tHn000001NtnqIAC
 - **Tableau Next Edition:** Deferred to a later release.
 - For sandboxes, replace `login` with `test`.
+
+**Promotion status:** Non-beta — installs cleanly into Production,
+Sandbox, and Developer Edition orgs. v1.1.2-1 cut with `--code-coverage`
+against DevHub `cvk-dev`; package coverage 81%, passed coverage check.
 
 ### Fixed
 
